@@ -24,6 +24,7 @@ func openFile(file string) (*os.File, error) {
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintf(os.Stderr, "Usage: my-cat <file>\n")
+		os.Exit(1)
 	}
 
 	file := os.Args[1]
