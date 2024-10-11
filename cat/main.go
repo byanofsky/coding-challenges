@@ -2,7 +2,6 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +10,17 @@ import (
 
 const BUFFER_SIZE = 1024
 
+func openFile(file string) (*os.File, error) {
+	f, err := os.Open(file)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("file does not exist: %s", file)
+		}
+		return nil, err
+	}
+	return f, err
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintf(os.Stderr, "Usage: my-cat <file>\n")
@@ -18,34 +28,16 @@ func main() {
 
 	file := os.Args[1]
 
-	f, err := os.Open(file)
+	f, err := openFile(file)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			fmt.Fprintf(os.Stderr, "File does not exist: %s\n", file)
-			os.Exit(1)
-		} else {
-			panic(err)
-		}
+		fmt.Fprintf(os.Stderr, "Error opening file: %v\n", err)
+		os.Exit(1)
 	}
 	defer f.Close()
 
-	reader := bufio.NewReader(f)
-
-	b := make([]byte, BUFFER_SIZE)
-	for {
-		n, err := reader.Read(b)
-		if err != nil && err != io.EOF {
-			fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
-			os.Exit(1)
-		}
-		if n == 0 && errors.Is(err, io.EOF) {
-			break
-		}
-
-		fmt.Fprintf(os.Stdin, "%s", b)
-		if _, err := os.Stdout.Write(b); err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing to stdout: %v\n", err)
-		}
+	if _, err := io.Copy(os.Stdout, f); err != nil {
+		fmt.Fprintf(os.Stderr, "Error copying to stdout: %v\n", file)
+		os.Exit(1)
 	}
 	// // Define command-line flags
 	// name := flag.String("name", "World", "Name to greet")
