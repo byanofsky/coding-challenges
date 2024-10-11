@@ -2,13 +2,14 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 )
 
-const BUFFER_SIZE = 1000
+const BUFFER_SIZE = 1024
 
 func main() {
 	if len(os.Args) != 2 {
@@ -21,19 +22,30 @@ func main() {
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			fmt.Fprintf(os.Stderr, "File does not exist: %s\n", file)
+			os.Exit(1)
 		} else {
 			panic(err)
 		}
 	}
 	defer f.Close()
 
+	reader := bufio.NewReader(f)
+
 	b := make([]byte, BUFFER_SIZE)
 	for {
-		n, err := f.Read(b)
+		n, err := reader.Read(b)
+		if err != nil && err != io.EOF {
+			fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
+			os.Exit(1)
+		}
 		if n == 0 && errors.Is(err, io.EOF) {
 			break
 		}
+
 		fmt.Fprintf(os.Stdin, "%s", b)
+		if _, err := os.Stdout.Write(b); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing to stdout: %v\n", err)
+		}
 	}
 	// // Define command-line flags
 	// name := flag.String("name", "World", "Name to greet")
