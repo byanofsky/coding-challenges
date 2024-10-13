@@ -22,30 +22,33 @@ func openFile(file string) (*os.File, error) {
 }
 
 func main() {
-	if len(os.Args) != 2 {
+	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: my-cat <file>\n")
 		os.Exit(1)
 	}
 
-	file := os.Args[1]
-	var r io.Reader
+	for i := 1; i < len(os.Args); i++ {
+		file := os.Args[i]
+		var r io.Reader
 
-	if file == "-" {
-		r = os.Stdin
-	} else {
-		f, err := openFile(file)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error opening file: %v\n", err)
+		if file == "-" {
+			r = os.Stdin
+		} else {
+			f, err := openFile(file)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error opening file: %v\n", err)
+				os.Exit(1)
+			}
+			defer f.Close()
+			r = f
+		}
+
+		if _, err := io.Copy(os.Stdout, r); err != nil {
+			fmt.Fprintf(os.Stderr, "Error copying to stdout: %v\n", file)
 			os.Exit(1)
 		}
-		defer f.Close()
-		r = f
 	}
 
-	if _, err := io.Copy(os.Stdout, r); err != nil {
-		fmt.Fprintf(os.Stderr, "Error copying to stdout: %v\n", file)
-		os.Exit(1)
-	}
 	// // Define command-line flags
 	// name := flag.String("name", "World", "Name to greet")
 	// flag.Parse()
