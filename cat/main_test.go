@@ -20,7 +20,7 @@ func TestBasic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to read test file: %v", err)
 	}
-	if string(output) != "Hi" {
+	if string(output) != string(expected) {
 		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
 	}
 }
