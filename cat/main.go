@@ -3,6 +3,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -22,13 +23,18 @@ func openFile(file string) (*os.File, error) {
 }
 
 func main() {
-	if len(os.Args) < 2 {
+	// Define command-line flags
+	// numberLines := flag.Bool("n", false, "Enables numbered lines")
+	// flag.Parse()
+
+	args := flag.Args()
+
+	if len(args) < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: my-cat <file>\n")
 		os.Exit(1)
 	}
 
-	for i := 1; i < len(os.Args); i++ {
-		file := os.Args[i]
+	for _, file := range args[1:] {
 		var r io.Reader
 
 		if file == "-" {
@@ -48,10 +54,6 @@ func main() {
 			os.Exit(1)
 		}
 	}
-
-	// // Define command-line flags
-	// name := flag.String("name", "World", "Name to greet")
-	// flag.Parse()
 
 	// // Use the parsed flag
 	// fmt.Printf("Hello, %s!\n", *name)
