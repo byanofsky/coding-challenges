@@ -25,4 +25,19 @@ func TestBasic(t *testing.T) {
 	}
 }
 
+// Test for stdin as input
+func TestStdin(t *testing.T) {
+	cmd := exec.Command("sh", "-c", "echo 'hello world' | go run main.go -")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("Output: %v", string(output))
+		t.Fatalf("Failed to run command: %v", err)
+	}
+
+	expected := "hello world\n"
+	if string(output) != string(expected) {
+		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
+	}
+}
+
 // TODO: Add test for errors

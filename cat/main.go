@@ -28,15 +28,21 @@ func main() {
 	}
 
 	file := os.Args[1]
+	var r io.Reader
 
-	f, err := openFile(file)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error opening file: %v\n", err)
-		os.Exit(1)
+	if file == "-" {
+		r = os.Stdin
+	} else {
+		f, err := openFile(file)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error opening file: %v\n", err)
+			os.Exit(1)
+		}
+		defer f.Close()
+		r = f
 	}
-	defer f.Close()
 
-	if _, err := io.Copy(os.Stdout, f); err != nil {
+	if _, err := io.Copy(os.Stdout, r); err != nil {
 		fmt.Fprintf(os.Stderr, "Error copying to stdout: %v\n", file)
 		os.Exit(1)
 	}
