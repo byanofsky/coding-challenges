@@ -25,16 +25,16 @@ func openFile(file string) (*os.File, error) {
 func main() {
 	// Define command-line flags
 	// numberLines := flag.Bool("n", false, "Enables numbered lines")
-	// flag.Parse()
+	flag.Parse()
 
 	args := flag.Args()
 
-	if len(args) < 2 {
+	if len(args) < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: my-cat <file>\n")
 		os.Exit(1)
 	}
 
-	for _, file := range args[1:] {
+	for _, file := range args {
 		var r io.Reader
 
 		if file == "-" {
