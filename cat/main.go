@@ -10,8 +10,6 @@ import (
 	"os"
 )
 
-const BUFFER_SIZE = 1024
-
 func openFile(file string) (*os.File, error) {
 	f, err := os.Open(file)
 	if err != nil {
@@ -24,66 +22,59 @@ func openFile(file string) (*os.File, error) {
 }
 
 func main() {
-	// Define command-line flags
-	numberLines := flag.Bool("n", false, "Enables numbered lines")
-	numberLinesSkipBlank := flag.Bool("b", false, "Enables numbered lines")
+	numberLines := flag.Bool("n", false, "Number all output lines")
+	numberNonBlankLines := flag.Bool("b", false, "Number non-blank output lines")
 	flag.Parse()
 
-	args := flag.Args()
-
-	if len(args) < 1 {
-		fmt.Fprintf(os.Stderr, "Usage: my-cat <file>\n")
+	if flag.NArg() < 1 {
+		fmt.Fprintln(os.Stderr, "Usage: my-cat [-n | -b] [file ...]")
 		os.Exit(1)
 	}
 
-	if *numberLines && *numberLinesSkipBlank {
-		fmt.Fprintf(os.Stderr, "Cannot provide both -n and -b flags\n")
+	if *numberLines && *numberNonBlankLines {
+		fmt.Fprintln(os.Stderr, "Cannot provide both -n and -b flags")
 	}
 
 	w := bufio.NewWriter(os.Stdout)
 	defer w.Flush()
 
 	lineNumber := 1
-	for _, file := range args {
-		var r io.Reader
-
-		if file == "-" {
-			r = os.Stdin
-		} else {
-			f, err := openFile(file)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error opening file: %v\n", err)
-				os.Exit(1)
-			}
-			defer f.Close()
-			r = f
-		}
-
-		scanner := bufio.NewScanner(r)
-		scanner.Split(bufio.ScanLines)
-		firstLine := true
-		for scanner.Scan() {
-			if firstLine {
-				firstLine = false
-			} else {
-				fmt.Fprintf(w, "\n")
-			}
-			text := scanner.Text()
-			if *numberLines {
-				fmt.Fprintf(w, "%d  ", lineNumber)
-				lineNumber++
-			} else if *numberLinesSkipBlank {
-				if len(text) > 0 {
-					fmt.Fprintf(w, "%d  ", lineNumber)
-					lineNumber++
-				}
-			}
-			fmt.Fprintf(w, "%s", text)
-		}
-		if err := scanner.Err(); err != nil {
-			fmt.Fprintf(os.Stderr, "Invalid input: %s", err)
+	for _, file := range flag.Args() {
+		if err := processFile(file, w, numberLines, numberNonBlankLines, &lineNumber); err != nil {
+			fmt.Fprintf(os.Stderr, "Error processing file %s: %v\n", file, err)
 			os.Exit(1)
 		}
 	}
+}
 
+func processFile(file string, w *bufio.Writer, numberLines, numberNonBlankLines *bool, lineNumber *int) error {
+	var r io.Reader
+
+	if file == "-" {
+		r = os.Stdin
+	} else {
+		f, err := openFile(file)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		r = f
+	}
+
+	scanner := bufio.NewScanner(r)
+	firstLine := true
+	for scanner.Scan() {
+		if firstLine {
+			firstLine = false
+		} else {
+			fmt.Fprintf(w, "\n")
+		}
+		text := scanner.Text()
+		if *numberLines || (*numberNonBlankLines && len(text) > 0) {
+			fmt.Fprintf(w, "%d  ", *lineNumber)
+			*lineNumber++
+		}
+		fmt.Fprint(w, text)
+	}
+	return scanner.Err()
 }

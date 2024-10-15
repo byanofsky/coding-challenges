@@ -17,7 +17,7 @@ build:
 
 # Run tests
 test:
-	$(GOTEST) -v ./...
+	$(GOTEST) -count=1 -v ./...
 
 # Clean build files
 clean:
