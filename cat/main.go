@@ -38,7 +38,7 @@ func main() {
 	w := bufio.NewWriter(os.Stdout)
 	defer w.Flush()
 
-	c := 1
+	lineNumber := 1
 	for _, file := range args {
 		var r io.Reader
 
@@ -64,10 +64,10 @@ func main() {
 				fmt.Fprintf(w, "\n")
 			}
 			if *numberLines {
-				fmt.Fprintf(w, "%d  ", c)
-				c++
+				fmt.Fprintf(w, "%d  ", lineNumber)
 			}
 			fmt.Fprintf(w, "%s", scanner.Text())
+			lineNumber++
 		}
 		if err := scanner.Err(); err != nil {
 			fmt.Fprintf(os.Stderr, "Invalid input: %s", err)
