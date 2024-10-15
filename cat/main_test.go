@@ -35,7 +35,7 @@ func TestStdin(t *testing.T) {
 		t.Fatalf("Failed to run command: %v", err)
 	}
 
-	expected := "hello world\n"
+	expected := "hello world"
 	if string(output) != string(expected) {
 		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
 	}
@@ -62,6 +62,21 @@ func TestConcat(t *testing.T) {
 	}
 	expected := fmt.Sprintf("%s%s", expected1, expected2)
 
+	if string(output) != string(expected) {
+		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
+	}
+}
+
+// Test n flag functionality
+func TestNFlag(t *testing.T) {
+	cmd := exec.Command("sh", "-c", "echo 'line 1\nline 2\nline 3' | go run main.go -n -")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("Output: %v", string(output))
+		t.Fatalf("Failed to run command: %v", err)
+	}
+
+	expected := "1  line 1\n2  line 2\n3  line 3"
 	if string(output) != string(expected) {
 		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
 	}

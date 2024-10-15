@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
@@ -24,7 +25,7 @@ func openFile(file string) (*os.File, error) {
 
 func main() {
 	// Define command-line flags
-	// numberLines := flag.Bool("n", false, "Enables numbered lines")
+	numberLines := flag.Bool("n", false, "Enables numbered lines")
 	flag.Parse()
 
 	args := flag.Args()
@@ -34,6 +35,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	w := bufio.NewWriter(os.Stdout)
+	defer w.Flush()
+
+	c := 1
 	for _, file := range args {
 		var r io.Reader
 
@@ -49,35 +54,25 @@ func main() {
 			r = f
 		}
 
-		if _, err := io.Copy(os.Stdout, r); err != nil {
-			fmt.Fprintf(os.Stderr, "Error copying to stdout: %v\n", file)
+		scanner := bufio.NewScanner(r)
+		scanner.Split(bufio.ScanLines)
+		firstLine := true
+		for scanner.Scan() {
+			if firstLine {
+				firstLine = false
+			} else {
+				fmt.Fprintf(w, "\n")
+			}
+			if *numberLines {
+				fmt.Fprintf(w, "%d  ", c)
+				c++
+			}
+			fmt.Fprintf(w, "%s", scanner.Text())
+		}
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintf(os.Stderr, "Invalid input: %s", err)
 			os.Exit(1)
 		}
 	}
 
-	// // Use the parsed flag
-	// fmt.Printf("Hello, %s!\n", *name)
-
-	// // Example of handling subcommands
-	// if len(os.Args) > 1 {
-	// 	switch os.Args[1] {
-	// 	case "version":
-	// 		fmt.Println("v0.1.0")
-	// 	case "help":
-	// 		printHelp()
-	// 	default:
-	// 		fmt.Printf("Unknown command: %s\n", os.Args[1])
-	// 		printHelp()
-	// 	}
-	// }
 }
-
-// func printHelp() {
-// 	fmt.Println("Usage:")
-// 	fmt.Println("  cli-tool [flags] [command]")
-// 	fmt.Println("\nFlags:")
-// 	flag.PrintDefaults()
-// 	fmt.Println("\nCommands:")
-// 	fmt.Println("  version    Print the version number")
-// 	fmt.Println("  help       Print this help message")
-// }
