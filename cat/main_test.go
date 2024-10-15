@@ -82,4 +82,34 @@ func TestNFlag(t *testing.T) {
 	}
 }
 
+// Test numbering blank lines
+func TestNumberBlankLines(t *testing.T) {
+	cmd := exec.Command("sh", "-c", "echo 'line 1\n\nline 2\n\nline 3' | go run main.go -n -")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("Output: %v", string(output))
+		t.Fatalf("Failed to run command: %v", err)
+	}
+
+	expected := "1  line 1\n2  \n3  line 2\n4  \n5  line 3"
+	if string(output) != string(expected) {
+		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
+	}
+}
+
+// Test numbering blank lines
+func TestNumberSkipBlankLines(t *testing.T) {
+	cmd := exec.Command("sh", "-c", "echo 'line 1\n\nline 2\n\nline 3' | go run main.go -b -")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("Output: %v", string(output))
+		t.Fatalf("Failed to run command: %v", err)
+	}
+
+	expected := "1  line 1\n\n2  line 2\n\n3  line 3"
+	if string(output) != string(expected) {
+		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
+	}
+}
+
 // TODO: Add test for errors

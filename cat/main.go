@@ -26,6 +26,7 @@ func openFile(file string) (*os.File, error) {
 func main() {
 	// Define command-line flags
 	numberLines := flag.Bool("n", false, "Enables numbered lines")
+	numberLinesSkipBlank := flag.Bool("b", false, "Enables numbered lines")
 	flag.Parse()
 
 	args := flag.Args()
@@ -33,6 +34,10 @@ func main() {
 	if len(args) < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: my-cat <file>\n")
 		os.Exit(1)
+	}
+
+	if *numberLines && *numberLinesSkipBlank {
+		fmt.Fprintf(os.Stderr, "Cannot provide both -n and -b flags\n")
 	}
 
 	w := bufio.NewWriter(os.Stdout)
@@ -63,11 +68,17 @@ func main() {
 			} else {
 				fmt.Fprintf(w, "\n")
 			}
+			text := scanner.Text()
 			if *numberLines {
 				fmt.Fprintf(w, "%d  ", lineNumber)
+				lineNumber++
+			} else if *numberLinesSkipBlank {
+				if len(text) > 0 {
+					fmt.Fprintf(w, "%d  ", lineNumber)
+					lineNumber++
+				}
 			}
-			fmt.Fprintf(w, "%s", scanner.Text())
-			lineNumber++
+			fmt.Fprintf(w, "%s", text)
 		}
 		if err := scanner.Err(); err != nil {
 			fmt.Fprintf(os.Stderr, "Invalid input: %s", err)
