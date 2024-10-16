@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 )
 
 func main() {
@@ -14,7 +15,8 @@ func main() {
 	args := flag.Args()
 
 	// TODO: Validate args input
-	// exp := args[0]
+	re := regexp.MustCompile(`^"(.*)"|(.*)$`)
+	pattern := re.FindStringSubmatch(args[0])[0]
 	file := args[1]
 
 	// Open file
@@ -36,7 +38,23 @@ func main() {
 	// Scan each line of file and print to Stdout buffered writer
 	scanner := bufio.NewScanner(f)
 	firstLine := true
+	// Track whether match is found
+	foundMatch := false
 	for scanner.Scan() {
+		line := scanner.Text()
+
+		// Check whether line matches
+		if pattern != `""` { // Empty expression matches all
+			matched, err := regexp.MatchString(pattern, line)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Regexp error: %s\n", err)
+			}
+			if !matched {
+				continue
+			}
+		}
+		foundMatch = true
+
 		// Add line breaks that were removed during scan.
 		if firstLine {
 			firstLine = false
@@ -44,12 +62,16 @@ func main() {
 			w.WriteByte('\n')
 		}
 
-		text := scanner.Text()
-		w.WriteString(text)
+		w.WriteString(line)
 	}
 	if err := scanner.Err(); err != nil {
 		// TODO: Extract to error checker function
 		fmt.Fprintf(os.Stderr, "Error reading file: %s\n", err)
+		os.Exit(1)
+	}
+
+	// Exit code 1 when match not found.
+	if !foundMatch {
 		os.Exit(1)
 	}
 }
