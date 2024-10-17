@@ -9,7 +9,27 @@ import (
 	"regexp"
 )
 
-func grep(pattern string, file string) bool {
+func recurseGrep() bool {
+	args := flag.Args()
+	// TODO: Validate args input
+	re := regexp.MustCompile(`^"(.*)"|(.*)$`)
+	pattern := re.FindStringSubmatch(args[0])[0]
+	file := args[1]
+	fmt.Printf("file: %s pattern: %s", file, pattern)
+
+	// TODO: Return foundMatch
+	return true
+}
+
+func grep() bool {
+	args := flag.Args()
+
+	// TODO: Validate args input
+	// TODO: use strcnv package to extract from within quotes
+	re := regexp.MustCompile(`^"(.*)"|(.*)$`)
+	pattern := re.FindStringSubmatch(args[0])[0]
+	file := args[1]
+
 	// Open file
 	f, err := os.Open(file)
 	if err != nil {
@@ -64,20 +84,15 @@ func grep(pattern string, file string) bool {
 
 func main() {
 	// Parse arguments
-	// recurse := flag.Bool("r", false, "Recurse a directory. Usage: my-grp -r <pattern> <directory>")
+	recurse := flag.Bool("r", false, "Recurse a directory. Usage: my-grp -r <pattern> <directory>")
 	flag.Parse()
-	args := flag.Args()
 
-	// TODO: Validate args input
-	re := regexp.MustCompile(`^"(.*)"|(.*)$`)
-	pattern := re.FindStringSubmatch(args[0])[0]
-	file := args[1]
-
-	// if (*recurse) {
-	// 	recurseGrep()
-	// } else {
-	foundMatch := grep(pattern, file)
-	// }
+	var foundMatch bool
+	if *recurse {
+		foundMatch = recurseGrep()
+	} else {
+		foundMatch = grep()
+	}
 
 	// Exit code 1 when match not found.
 	if !foundMatch {
