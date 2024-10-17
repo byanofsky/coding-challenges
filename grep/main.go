@@ -9,7 +9,19 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 )
+
+func parsePattern(pattern string) string {
+	// Attempt to unquote. If unquote has error, pattern likely doesn't have quotes.
+	// So just return pattern as is.
+	unquoted, err := strconv.Unquote(pattern)
+	if err != nil {
+		return pattern
+	}
+
+	return unquoted
+}
 
 func grepFile(file string, pattern string, w *bufio.Writer, printFile bool) bool {
 	// Open file
@@ -32,7 +44,7 @@ func grepFile(file string, pattern string, w *bufio.Writer, printFile bool) bool
 		line := scanner.Text()
 
 		// Check whether line matches
-		if pattern != `""` { // Empty expression matches all
+		if len(pattern) > 0 { // Empty expression matches all
 			matched, err := regexp.MatchString(pattern, line)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Regexp error: %s\n", err)
@@ -68,8 +80,9 @@ func grepFile(file string, pattern string, w *bufio.Writer, printFile bool) bool
 func recurseGrep(w *bufio.Writer) bool {
 	args := flag.Args()
 	// TODO: Validate args input
-	re := regexp.MustCompile(`^"(.*)"|(.*)$`)
-	pattern := re.FindStringSubmatch(args[0])[0]
+	// TODO: Use flag.Arg(0)
+	pattern := parsePattern(args[0])
+
 	root := args[1]
 
 	foundMatch := false
@@ -99,10 +112,9 @@ func recurseGrep(w *bufio.Writer) bool {
 func grep(w *bufio.Writer) bool {
 	args := flag.Args()
 
-	// TODO: Validate args input
-	// TODO: use strcnv package to extract from within quotes
-	re := regexp.MustCompile(`^"(.*)"|(.*)$`)
-	pattern := re.FindStringSubmatch(args[0])[0]
+	// TODO: Validate args input length
+	// TODO: Use flag.Arg(0)
+	pattern := parsePattern(args[0])
 	file := args[1]
 
 	return grepFile(file, pattern, w, false)
