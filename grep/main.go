@@ -9,16 +9,7 @@ import (
 	"regexp"
 )
 
-func main() {
-	// Parse arguments
-	flag.Parse()
-	args := flag.Args()
-
-	// TODO: Validate args input
-	re := regexp.MustCompile(`^"(.*)"|(.*)$`)
-	pattern := re.FindStringSubmatch(args[0])[0]
-	file := args[1]
-
+func grep(pattern string, file string) bool {
 	// Open file
 	f, err := os.Open(file)
 	if err != nil {
@@ -67,6 +58,26 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error printing: %s\n", err)
 		os.Exit(1)
 	}
+
+	return foundMatch
+}
+
+func main() {
+	// Parse arguments
+	// recurse := flag.Bool("r", false, "Recurse a directory. Usage: my-grp -r <pattern> <directory>")
+	flag.Parse()
+	args := flag.Args()
+
+	// TODO: Validate args input
+	re := regexp.MustCompile(`^"(.*)"|(.*)$`)
+	pattern := re.FindStringSubmatch(args[0])[0]
+	file := args[1]
+
+	// if (*recurse) {
+	// 	recurseGrep()
+	// } else {
+	foundMatch := grep(pattern, file)
+	// }
 
 	// Exit code 1 when match not found.
 	if !foundMatch {
