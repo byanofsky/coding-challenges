@@ -101,3 +101,23 @@ func TestNoMatch(t *testing.T) {
 		t.Errorf("Expect exit code: 1\n Received %d", cmd.ProcessState.ExitCode())
 	}
 }
+
+func TestSimpleRecurse(t *testing.T) {
+	cmd := exec.Command("go", "run", "main.go", "-r", `Two`, "./test-simple-subdir")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("Output: %v", string(output))
+		t.Fatalf("Failed to run command: %v", err)
+	}
+
+	expected := "test-simple-subdir/dir1/file2.txt:TwoThree\ntest-simple-subdir/file1.txt:OneTwo\ntest-simple-subdir/file1.txt:TwoThree\n"
+	if err != nil {
+		t.Fatalf("Failed to read test file: %v", err)
+	}
+
+	if string(output) != expected {
+		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
+	}
+}
+
+// TODO: Complex recurse test

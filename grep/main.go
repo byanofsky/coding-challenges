@@ -5,11 +5,25 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"regexp"
 )
 
-func grepFile(f *os.File, pattern string, w *bufio.Writer) bool {
+func grepFile(file string, pattern string, w *bufio.Writer, printFile bool) bool {
+	// Open file
+	f, err := os.Open(file)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintf(os.Stderr, "File does not exist: %s\n", file)
+			os.Exit(1)
+		}
+		fmt.Fprintf(os.Stderr, "Error opening file: %s\n", err)
+		os.Exit(1)
+	}
+	defer f.Close()
+
 	// Scan each line of file and print to Stdout buffered writer
 	scanner := bufio.NewScanner(f)
 	// Track whether match is found
@@ -30,7 +44,12 @@ func grepFile(f *os.File, pattern string, w *bufio.Writer) bool {
 		foundMatch = true
 
 		// Write output
-		out := fmt.Sprintf("%s\n", line)
+		out := line
+		if printFile {
+			out = fmt.Sprintf("%s:%s", file, out)
+		}
+		out = fmt.Sprintf("%s\n", out)
+
 		n, err := w.WriteString(out)
 		if n != len(out) || err != nil {
 			fmt.Fprintf(os.Stderr, "Error writing out: %s\n", err)
@@ -46,19 +65,38 @@ func grepFile(f *os.File, pattern string, w *bufio.Writer) bool {
 	return foundMatch
 }
 
-func recurseGrep() bool {
+func recurseGrep(w *bufio.Writer) bool {
 	args := flag.Args()
 	// TODO: Validate args input
 	re := regexp.MustCompile(`^"(.*)"|(.*)$`)
 	pattern := re.FindStringSubmatch(args[0])[0]
-	file := args[1]
-	fmt.Printf("file: %s pattern: %s", file, pattern)
+	root := args[1]
 
-	// TODO: Return foundMatch
-	return true
+	foundMatch := false
+
+	// Walk the files from root. Skip dirs.
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() {
+			return nil
+		}
+
+		if grepFile(path, pattern, w, true) {
+			foundMatch = true
+		}
+		return nil
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error recursing path: %s\n", err)
+	}
+
+	return foundMatch
 }
 
-func grep() bool {
+func grep(w *bufio.Writer) bool {
 	args := flag.Args()
 
 	// TODO: Validate args input
@@ -67,23 +105,7 @@ func grep() bool {
 	pattern := re.FindStringSubmatch(args[0])[0]
 	file := args[1]
 
-	// Open file
-	f, err := os.Open(file)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			fmt.Fprintf(os.Stderr, "File does not exist: %s\n", file)
-			os.Exit(1)
-		}
-		fmt.Fprintf(os.Stderr, "Error opening file: %s\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-
-	// Create buffered writer to Stdout
-	w := bufio.NewWriter(os.Stdout)
-	defer w.Flush()
-
-	return grepFile(f, pattern, w)
+	return grepFile(file, pattern, w, false)
 }
 
 func main() {
@@ -91,11 +113,15 @@ func main() {
 	recurse := flag.Bool("r", false, "Recurse a directory. Usage: my-grp -r <pattern> <directory>")
 	flag.Parse()
 
+	// Create buffered writer to Stdout
+	w := bufio.NewWriter(os.Stdout)
+	defer w.Flush()
+
 	var foundMatch bool
 	if *recurse {
-		foundMatch = recurseGrep()
+		foundMatch = recurseGrep(w)
 	} else {
-		foundMatch = grep()
+		foundMatch = grep(w)
 	}
 
 	// Exit code 1 when match not found.
