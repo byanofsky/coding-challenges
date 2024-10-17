@@ -78,12 +78,11 @@ func grepFile(file string, pattern string, w *bufio.Writer, printFile bool) bool
 }
 
 func recurseGrep(w *bufio.Writer) bool {
-	args := flag.Args()
-	// TODO: Validate args input
-	// TODO: Use flag.Arg(0)
-	pattern := parsePattern(args[0])
-
-	root := args[1]
+	if flag.NArg() != 2 {
+		fmt.Fprintf(os.Stderr, "Usage: grep -r <pattern> <file>")
+	}
+	pattern := parsePattern(flag.Arg(0))
+	root := flag.Arg(1)
 
 	foundMatch := false
 
@@ -110,12 +109,11 @@ func recurseGrep(w *bufio.Writer) bool {
 }
 
 func grep(w *bufio.Writer) bool {
-	args := flag.Args()
-
-	// TODO: Validate args input length
-	// TODO: Use flag.Arg(0)
-	pattern := parsePattern(args[0])
-	file := args[1]
+	if flag.NArg() != 2 {
+		fmt.Fprintf(os.Stderr, "Usage: grep <pattern> <file>")
+	}
+	pattern := parsePattern(flag.Arg(0))
+	file := flag.Arg(1)
 
 	return grepFile(file, pattern, w, false)
 }
