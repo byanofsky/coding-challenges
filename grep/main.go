@@ -9,6 +9,43 @@ import (
 	"regexp"
 )
 
+func grepFile(f *os.File, pattern string, w *bufio.Writer) bool {
+	// Scan each line of file and print to Stdout buffered writer
+	scanner := bufio.NewScanner(f)
+	// Track whether match is found
+	foundMatch := false
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		// Check whether line matches
+		if pattern != `""` { // Empty expression matches all
+			matched, err := regexp.MatchString(pattern, line)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Regexp error: %s\n", err)
+			}
+			if !matched {
+				continue
+			}
+		}
+		foundMatch = true
+
+		// Write output
+		out := fmt.Sprintf("%s\n", line)
+		n, err := w.WriteString(out)
+		if n != len(out) || err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing out: %s\n", err)
+			os.Exit(1)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		// TODO: Extract to error checker function
+		fmt.Fprintf(os.Stderr, "Error printing: %s\n", err)
+		os.Exit(1)
+	}
+
+	return foundMatch
+}
+
 func recurseGrep() bool {
 	args := flag.Args()
 	// TODO: Validate args input
@@ -46,40 +83,7 @@ func grep() bool {
 	w := bufio.NewWriter(os.Stdout)
 	defer w.Flush()
 
-	// Scan each line of file and print to Stdout buffered writer
-	scanner := bufio.NewScanner(f)
-	// Track whether match is found
-	foundMatch := false
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		// Check whether line matches
-		if pattern != `""` { // Empty expression matches all
-			matched, err := regexp.MatchString(pattern, line)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Regexp error: %s\n", err)
-			}
-			if !matched {
-				continue
-			}
-		}
-		foundMatch = true
-
-		// Write output
-		out := fmt.Sprintf("%s\n", line)
-		n, err := w.WriteString(out)
-		if n != len(out) || err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing out: %s\n", err)
-			os.Exit(1)
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		// TODO: Extract to error checker function
-		fmt.Fprintf(os.Stderr, "Error printing: %s\n", err)
-		os.Exit(1)
-	}
-
-	return foundMatch
+	return grepFile(f, pattern, w)
 }
 
 func main() {
