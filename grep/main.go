@@ -37,7 +37,6 @@ func main() {
 
 	// Scan each line of file and print to Stdout buffered writer
 	scanner := bufio.NewScanner(f)
-	firstLine := true
 	// Track whether match is found
 	foundMatch := false
 	for scanner.Scan() {
@@ -55,18 +54,17 @@ func main() {
 		}
 		foundMatch = true
 
-		// Add line breaks that were removed during scan.
-		if firstLine {
-			firstLine = false
-		} else {
-			w.WriteByte('\n')
+		// Write output
+		out := fmt.Sprintf("%s\n", line)
+		n, err := w.WriteString(out)
+		if n != len(out) || err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing out: %s\n", err)
+			os.Exit(1)
 		}
-
-		w.WriteString(line)
 	}
 	if err := scanner.Err(); err != nil {
 		// TODO: Extract to error checker function
-		fmt.Fprintf(os.Stderr, "Error reading file: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Error printing: %s\n", err)
 		os.Exit(1)
 	}
 

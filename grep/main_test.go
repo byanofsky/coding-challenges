@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestEmptyExpression(t *testing.T) {
+func TestSimpleEmptyExpression(t *testing.T) {
 	testFile := "simple-test.txt"
 	cmd := exec.Command("go", "run", "main.go", `""`, testFile)
 	output, err := cmd.CombinedOutput()
@@ -15,13 +15,22 @@ func TestEmptyExpression(t *testing.T) {
 		t.Fatalf("Failed to run command: %v", err)
 	}
 
-	expected, err := os.ReadFile(testFile)
+	f, err := os.ReadFile(testFile)
+	expected := append(f, '\n')
 	if err != nil {
 		t.Fatalf("Failed to read test file: %v", err)
 	}
 
 	if string(output) != string(expected) {
 		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
+	}
+}
+
+func TestComplexEmptyExpression(t *testing.T) {
+	cmd := exec.Command("sh", "-c", `go run main.go "" test.txt | diff test.txt -`)
+	err := cmd.Run()
+	if err != nil {
+		t.Fatalf("Received output does not match expected")
 	}
 }
 
@@ -34,7 +43,8 @@ func TestOneLineExpressionMatchAll(t *testing.T) {
 		t.Fatalf("Failed to run command: %v", err)
 	}
 
-	expected, err := os.ReadFile(testFile)
+	f, err := os.ReadFile(testFile)
+	expected := append(f, '\n')
 	if err != nil {
 		t.Fatalf("Failed to read test file: %v", err)
 	}
@@ -53,7 +63,7 @@ func TestOneLineExpressionMatchOne(t *testing.T) {
 		t.Fatalf("Failed to run command: %v", err)
 	}
 
-	expected := "line 2"
+	expected := "line 2\n"
 	if err != nil {
 		t.Fatalf("Failed to read test file: %v", err)
 	}
