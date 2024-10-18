@@ -111,9 +111,6 @@ func TestSimpleRecurse(t *testing.T) {
 	}
 
 	expected := "test-simple-subdir/dir1/file2.txt:TwoThree\ntest-simple-subdir/file1.txt:OneTwo\ntest-simple-subdir/file1.txt:TwoThree\n"
-	if err != nil {
-		t.Fatalf("Failed to read test file: %v", err)
-	}
 
 	if string(output) != expected {
 		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
@@ -121,3 +118,18 @@ func TestSimpleRecurse(t *testing.T) {
 }
 
 // TODO: Complex recurse test
+
+func TestSimpleInvert(t *testing.T) {
+	cmd := exec.Command("go", "run", "main.go", "-v", `2`, "./simple-test.txt")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("Output: %v", string(output))
+		t.Fatalf("Failed to run command: %v", err)
+	}
+
+	expected := "line 1\nline 3\n"
+
+	if string(output) != expected {
+		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
+	}
+}
