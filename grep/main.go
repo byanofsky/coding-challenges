@@ -53,6 +53,8 @@ func grepFile(file string, pattern string, w *bufio.Writer, printFile bool, inve
 	scanner := bufio.NewScanner(f)
 	// Track whether match is found
 	foundMatch := false
+	// TODO: Swap to Reader.readline for longer lines
+	// See: https://stackoverflow.com/a/21124415
 	for scanner.Scan() {
 		line := scanner.Text()
 		isMatch := matchLine(pattern, line)
