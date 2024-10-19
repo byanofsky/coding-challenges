@@ -16,7 +16,7 @@ type grepOptions struct {
 	recurse         bool
 	invert          bool
 	caseInsensitive bool
-	pattern         string
+	re              *regexp.Regexp
 	path            string
 }
 
@@ -85,16 +85,10 @@ func grepFile(file string, re *regexp.Regexp, w *bufio.Writer, printFile, invert
 }
 
 func recurseGrep(opts grepOptions, w *bufio.Writer) (bool, error) {
-	// TODO: Do this once
-	re, err := compilePattern(opts.pattern, opts.caseInsensitive)
-	if err != nil {
-		return false, fmt.Errorf("invalid regex pattern: %w", err)
-	}
-
 	foundMatch := false
 
 	// Walk the files from root. Skip dirs.
-	err = filepath.WalkDir(opts.path, func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(opts.path, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -103,7 +97,7 @@ func recurseGrep(opts grepOptions, w *bufio.Writer) (bool, error) {
 			return nil
 		}
 
-		match, err := grepFile(path, re, w, true, opts.invert)
+		match, err := grepFile(path, opts.re, w, true, opts.invert)
 		if err != nil {
 			return err
 		}
@@ -121,13 +115,7 @@ func recurseGrep(opts grepOptions, w *bufio.Writer) (bool, error) {
 }
 
 func grep(opts grepOptions, w *bufio.Writer) (bool, error) {
-	// TODO: Compile pattern
-	re, err := compilePattern(opts.pattern, opts.caseInsensitive)
-	if err != nil {
-		return false, fmt.Errorf("invalid regex pattern: %w", err)
-	}
-
-	return grepFile(opts.path, re, w, false, opts.invert)
+	return grepFile(opts.path, opts.re, w, false, opts.invert)
 }
 
 func run() error {
@@ -141,11 +129,17 @@ func run() error {
 		return errors.New("usage: my-grep [-r] [-v] [-i] <pattern> <file|irectory>")
 	}
 
+	pattern := parsePattern(flag.Arg(0))
+	re, err := compilePattern(pattern, *caseInsensitive)
+	if err != nil {
+		return fmt.Errorf("invalid regex pattern: %w", err)
+	}
+
 	opts := grepOptions{
 		recurse:         *recurse,
 		invert:          *invert,
 		caseInsensitive: *caseInsensitive,
-		pattern:         parsePattern(flag.Arg(0)),
+		re:              re,
 		path:            flag.Arg(1),
 	}
 
@@ -154,7 +148,6 @@ func run() error {
 	defer w.Flush()
 
 	var foundMatch bool
-	var err error
 
 	if opts.recurse {
 		foundMatch, err = recurseGrep(opts, w)
