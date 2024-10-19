@@ -25,10 +25,14 @@ func parsePattern(pattern string) string {
 	return unquoted
 }
 
-func matchLine(pattern string, line string) bool {
+func matchLine(pattern string, line string, caseInsensitive bool) bool {
 	// Check whether line matches
 	if len(pattern) == 0 { // Empty expression matches all
 		return true
+	}
+	if caseInsensitive {
+		pattern = strings.ToLower(pattern)
+		line = strings.ToLower(line)
 	}
 	matched, err := regexp.MatchString(pattern, line)
 	if err != nil {
@@ -38,7 +42,7 @@ func matchLine(pattern string, line string) bool {
 	return matched
 }
 
-func grepFile(file string, pattern string, w *bufio.Writer, printFile bool, invertSearch bool) bool {
+func grepFile(file string, pattern string, w *bufio.Writer, printFile bool, invertSearch bool, caseInsensitive bool) bool {
 	// Open file
 	f, err := os.Open(file)
 	if err != nil {
@@ -59,7 +63,7 @@ func grepFile(file string, pattern string, w *bufio.Writer, printFile bool, inve
 	// See: https://stackoverflow.com/a/21124415
 	for scanner.Scan() {
 		line := scanner.Text()
-		isMatch := matchLine(pattern, line)
+		isMatch := matchLine(pattern, line, caseInsensitive)
 		if invertSearch {
 			isMatch = !isMatch
 		}
@@ -90,7 +94,7 @@ func grepFile(file string, pattern string, w *bufio.Writer, printFile bool, inve
 	return foundMatch
 }
 
-func recurseGrep(w *bufio.Writer, invert bool) bool {
+func recurseGrep(w *bufio.Writer, invert bool, caseInsensitive bool) bool {
 	if flag.NArg() != 2 {
 		fmt.Fprintf(os.Stderr, "Usage: grep -r <pattern> <file>")
 	}
@@ -109,7 +113,7 @@ func recurseGrep(w *bufio.Writer, invert bool) bool {
 			return nil
 		}
 
-		if grepFile(path, pattern, w, true, invert) {
+		if grepFile(path, pattern, w, true, invert, caseInsensitive) {
 			foundMatch = true
 		}
 		return nil
@@ -121,20 +125,21 @@ func recurseGrep(w *bufio.Writer, invert bool) bool {
 	return foundMatch
 }
 
-func grep(w *bufio.Writer, invert bool) bool {
+func grep(w *bufio.Writer, invert bool, caseInsensitive bool) bool {
 	if flag.NArg() != 2 {
 		fmt.Fprintf(os.Stderr, "Usage: grep <pattern> <file>")
 	}
 	pattern := parsePattern(flag.Arg(0))
 	file := flag.Arg(1)
 
-	return grepFile(file, pattern, w, false, invert)
+	return grepFile(file, pattern, w, false, invert, caseInsensitive)
 }
 
 func main() {
 	// Parse arguments
-	recurse := flag.Bool("r", false, "Recurse a directory. Usage: my-grp -r <pattern> <directory>")
-	invert := flag.Bool("v", false, "Inverts search, excluding lines that match pattern. Usage: my-grp -v <pattern> <file>")
+	recurse := flag.Bool("r", false, "Recurse a directory.")
+	invert := flag.Bool("v", false, "Inverts search, excluding lines that match pattern.")
+	caseInsensitive := flag.Bool("i", false, "Makes pattern case insensitive.")
 	flag.Parse()
 
 	// Create buffered writer to Stdout
@@ -143,9 +148,9 @@ func main() {
 
 	var foundMatch bool
 	if *recurse {
-		foundMatch = recurseGrep(w, *invert)
+		foundMatch = recurseGrep(w, *invert, *caseInsensitive)
 	} else {
-		foundMatch = grep(w, *invert)
+		foundMatch = grep(w, *invert, *caseInsensitive)
 	}
 
 	// Exit code 1 when match not found.

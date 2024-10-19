@@ -193,3 +193,33 @@ func TestEndMatch(t *testing.T) {
 		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
 	}
 }
+
+func TestCaseInsensitive(t *testing.T) {
+	cmd := exec.Command("go", "run", "main.go", "-i", `"A"`, "./case-sensitivity.txt")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("Output: %v", string(output))
+		t.Fatalf("Failed to run command: %v", err)
+	}
+
+	expected := "aaa\nAAA\n"
+
+	if string(output) != expected {
+		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
+	}
+}
+
+func TestCaseSsensitive(t *testing.T) {
+	cmd := exec.Command("go", "run", "main.go", `"A"`, "./case-sensitivity.txt")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("Output: %v", string(output))
+		t.Fatalf("Failed to run command: %v", err)
+	}
+
+	expected := "AAA\n"
+
+	if string(output) != expected {
+		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
+	}
+}
