@@ -9,20 +9,18 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
 func parsePattern(pattern string) string {
-	p := strings.ReplaceAll(pattern, `\`, `\\`)
-	// Attempt to unquote. If unquote has error, pattern likely doesn't have quotes.
-	// So just return pattern as is.
-	unquoted, err := strconv.Unquote(p)
-	if err != nil {
-		return pattern
+	p := pattern
+
+	// Remove quotes
+	if strings.HasPrefix(p, `'`) && strings.HasSuffix(p, `'`) || strings.HasPrefix(p, `"`) && strings.HasSuffix(p, `"`) {
+		return p[1 : len(p)-1]
 	}
 
-	return unquoted
+	return p
 }
 
 func matchLine(pattern string, line string, caseInsensitive bool) bool {
