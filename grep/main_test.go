@@ -163,3 +163,33 @@ func TestWordCharMatch(t *testing.T) {
 		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
 	}
 }
+
+func TestBeginningMatch(t *testing.T) {
+	cmd := exec.Command("go", "run", "main.go", `"^AB"`, "./match-beg-end.txt")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("Output: %v", string(output))
+		t.Fatalf("Failed to run command: %v", err)
+	}
+
+	expected := "ABA\n"
+
+	if string(output) != expected {
+		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
+	}
+}
+
+func TestEndMatch(t *testing.T) {
+	cmd := exec.Command("go", "run", "main.go", `"AB$"`, "./match-beg-end.txt")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("Output: %v", string(output))
+		t.Fatalf("Failed to run command: %v", err)
+	}
+
+	expected := "BAB\n"
+
+	if string(output) != expected {
+		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
+	}
+}
