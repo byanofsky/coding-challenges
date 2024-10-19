@@ -10,12 +10,14 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 func parsePattern(pattern string) string {
+	p := strings.ReplaceAll(pattern, `\`, `\\`)
 	// Attempt to unquote. If unquote has error, pattern likely doesn't have quotes.
 	// So just return pattern as is.
-	unquoted, err := strconv.Unquote(pattern)
+	unquoted, err := strconv.Unquote(p)
 	if err != nil {
 		return pattern
 	}

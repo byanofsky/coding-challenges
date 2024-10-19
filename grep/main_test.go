@@ -133,3 +133,33 @@ func TestSimpleInvert(t *testing.T) {
 		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
 	}
 }
+
+func TestDigitMatch(t *testing.T) {
+	cmd := exec.Command("go", "run", "main.go", `"\d"`, "./symbols-digit-word.txt")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("Output: %v", string(output))
+		t.Fatalf("Failed to run command: %v", err)
+	}
+
+	expected := "12345\n67890\n"
+
+	if string(output) != expected {
+		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
+	}
+}
+
+func TestWordCharMatch(t *testing.T) {
+	cmd := exec.Command("go", "run", "main.go", `"\w"`, "./symbols-digit-word.txt")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("Output: %v", string(output))
+		t.Fatalf("Failed to run command: %v", err)
+	}
+
+	expected := "12345\nabcde\n67890\nfghij\n"
+
+	if string(output) != expected {
+		t.Errorf("Expected: %q\nReceived: %q", expected, string(output))
+	}
+}
