@@ -20,3 +20,5 @@ This solves the bonus problem from the grep coding challenge: https://codingchal
 - Optimizations: Do not append to tokens
 - Compile creates a set of matcher functions depending on tokens. These matcher functions are passed to regexp instance and will be used during matching.
 - Matcher function. Variation of visitor pattern (or my understanding of that pattern). Delegate matching to each matcher. Decides that to do next depending on current match result. Will enable such things as repition.
+- a next function is called from each matcher to determine what to call next. This is controlled in outer function.
+- For start character, will need to intercept in the for loop to prevent continuing to execute matchers against each char in string
