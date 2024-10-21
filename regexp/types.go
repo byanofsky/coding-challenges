@@ -16,3 +16,9 @@ type token struct {
 	kind  tokenType
 	token string
 }
+
+type matcher struct {
+	isMatch func(s string, i int, next nextMatcher) (bool, error)
+}
+
+type nextMatcher = func(s string, i int) (bool, error)

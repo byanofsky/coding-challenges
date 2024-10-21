@@ -18,3 +18,5 @@ This solves the bonus problem from the grep coding challenge: https://codingchal
 - Consider grouping these, with sub types
 - For now, no sub types. Just limit to a subset of regex.
 - Optimizations: Do not append to tokens
+- Compile creates a set of matcher functions depending on tokens. These matcher functions are passed to regexp instance and will be used during matching.
+- Matcher function. Variation of visitor pattern (or my understanding of that pattern). Delegate matching to each matcher. Decides that to do next depending on current match result. Will enable such things as repition.
