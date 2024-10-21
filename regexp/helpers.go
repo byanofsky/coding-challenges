@@ -26,6 +26,9 @@ func scan(pattern string) []token {
 			case '*':
 				t = "*"
 				kind = Repetition
+			case '.':
+				t = "."
+				kind = Wildcard
 			default:
 				t = string(char)
 				kind = SingleCharacter
@@ -64,12 +67,12 @@ func isMatch(matchers []matcher, s string) (bool, error) {
 
 func newSingleCharacterMatcher(c byte) matcher {
 	f := func(s string, i int, mIdx int, next nextMatcher) (bool, error) {
-		sLen := len(s)
-
+		// TODO: Move into next matcher function.
+		// Although, such an error may not be needed. This may be a valid case to return false.
 		// Assert edge cases
-		if i >= sLen {
+		if i >= len(s) {
 			// TODO: Custom error
-			return false, fmt.Errorf("out of bounds: %d of %d", i, sLen)
+			return false, nil
 		}
 
 		if s[i] != c {
@@ -78,5 +81,16 @@ func newSingleCharacterMatcher(c byte) matcher {
 
 		return next(s, i+1, mIdx+1)
 	}
+	return matcher{isMatch: f}
+}
+
+func newWildcardMatcher() matcher {
+	f := func(s string, i int, mIdx int, next nextMatcher) (bool, error) {
+		if i >= len(s) {
+			return false, nil
+		}
+		return next(s, i+1, mIdx+1)
+	}
+
 	return matcher{isMatch: f}
 }

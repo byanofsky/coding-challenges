@@ -12,6 +12,8 @@ func Compile(pattern string) *Regexp {
 		switch token.kind {
 		case SingleCharacter:
 			matchers = append(matchers, newSingleCharacterMatcher(token.token[0]))
+		case Wildcard:
+			matchers = append(matchers, newWildcardMatcher())
 		}
 	}
 

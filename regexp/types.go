@@ -4,12 +4,13 @@ type tokenType int
 
 const (
 	SingleCharacter tokenType = iota
+	Wildcard
 	EscapeSequence
 	Repetition
 )
 
 func (t tokenType) String() string {
-	return [...]string{"SingleCharacter", "EscapeSequence", "Repetition"}[t]
+	return [...]string{"SingleCharacter", "Wildcard", "EscapeSequence", "Repetition"}[t]
 }
 
 type token struct {

@@ -8,7 +8,7 @@ import (
 func TestScan(t *testing.T) {
 	expected := []token{
 		{kind: SingleCharacter, token: "a"},
-		{kind: SingleCharacter, token: "."},
+		{kind: Wildcard, token: "."},
 		{kind: Repetition, token: "*"},
 		{kind: EscapeSequence, token: `\w`},
 		{kind: EscapeSequence, token: `\n`},
