@@ -22,3 +22,8 @@ type matcher struct {
 }
 
 type nextMatcher = func(s string, i int, mIdx int) (bool, error)
+
+type Regexp struct {
+	// TODO: Destroy during re destruction
+	matchers []matcher
+}
