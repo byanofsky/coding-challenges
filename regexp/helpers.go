@@ -37,8 +37,33 @@ func scan(pattern string) []token {
 	return tokens
 }
 
+func isMatch(matchers []matcher, s string) (bool, error) {
+	var next nextMatcher
+	next = func(s string, i int, mIdx int) (bool, error) {
+		// Reached end of pattern. Therefore, this is a match.
+		if mIdx == len(matchers) {
+			return true, nil
+		}
+
+		return matchers[mIdx].isMatch(s, i, mIdx, next)
+	}
+
+	for i := range s {
+		// TODO: Pass pointer to matchers
+		result, err := matchers[0].isMatch(s, i, 0, next)
+		if err != nil {
+			return false, err
+		}
+		if result {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
 func newSingleCharacterMatcher(c byte) matcher {
-	f := func(s string, i int, next nextMatcher) (bool, error) {
+	f := func(s string, i int, mIdx int, next nextMatcher) (bool, error) {
 		sLen := len(s)
 
 		// Assert edge cases
@@ -51,7 +76,7 @@ func newSingleCharacterMatcher(c byte) matcher {
 			return false, nil
 		}
 
-		return next(s, i+1)
+		return next(s, i+1, mIdx+1)
 	}
 	return matcher{isMatch: f}
 }

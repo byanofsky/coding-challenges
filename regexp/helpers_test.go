@@ -26,13 +26,15 @@ func TestSuccessSingleCharacterMatcher(t *testing.T) {
 	// TODO: Replace with mocking lib
 	mockCalled := false
 	var mockInt int
-	mock := func(s string, i int) (bool, error) {
+	var mockMIdx int
+	mock := func(s string, i int, mIdx int) (bool, error) {
 		mockCalled = true
 		mockInt = i
+		mockMIdx = mIdx
 		return true, nil
 	}
 
-	actual, err := m.isMatch("abc", 1, mock)
+	actual, err := m.isMatch("abc", 1, 0, mock)
 	expected := true
 
 	if actual != expected {
@@ -50,6 +52,10 @@ func TestSuccessSingleCharacterMatcher(t *testing.T) {
 	if mockInt != 2 {
 		t.Errorf("Next function called with wrong arg. Expected: 2. Actual: %d", mockInt)
 	}
+
+	if mockMIdx != 1 {
+		t.Errorf("Next function called with wrong arg. Expected: 1. Actual: %d", mockInt)
+	}
 }
 
 func TestNoMatchSingleCharacterMatcher(t *testing.T) {
@@ -57,12 +63,12 @@ func TestNoMatchSingleCharacterMatcher(t *testing.T) {
 
 	// TODO: Replace with mocking lib
 	mockCalled := false
-	mock := func(s string, i int) (bool, error) {
+	mock := func(s string, i int, mIdx int) (bool, error) {
 		mockCalled = true
 		return true, nil
 	}
 
-	actual, err := m.isMatch("abc", 0, mock)
+	actual, err := m.isMatch("abc", 0, 0, mock)
 	expected := false
 
 	if actual != expected {
@@ -75,5 +81,100 @@ func TestNoMatchSingleCharacterMatcher(t *testing.T) {
 
 	if mockCalled != false {
 		t.Errorf("Next function not called")
+	}
+}
+
+func TestSuccessExactMatch(t *testing.T) {
+	matchers := []matcher{
+		newSingleCharacterMatcher('a'),
+		newSingleCharacterMatcher('b'),
+		newSingleCharacterMatcher('c'),
+	}
+
+	actual, err := isMatch(matchers, "abc")
+	expected := true
+
+	if err != nil {
+		t.Errorf("Received error: %v", err)
+	}
+
+	if actual != expected {
+		t.Errorf("Expected: %v\nActual: %v", expected, actual)
+	}
+}
+
+func TestSuccessSubMatch(t *testing.T) {
+	matchers := []matcher{
+		newSingleCharacterMatcher('a'),
+		newSingleCharacterMatcher('b'),
+		newSingleCharacterMatcher('c'),
+	}
+
+	actual, err := isMatch(matchers, "123abc456")
+	expected := true
+
+	if err != nil {
+		t.Errorf("Received error: %v", err)
+	}
+
+	if actual != expected {
+		t.Errorf("Expected: %v\nActual: %v", expected, actual)
+	}
+}
+
+func TestSuccessStartMatch(t *testing.T) {
+	matchers := []matcher{
+		newSingleCharacterMatcher('a'),
+		newSingleCharacterMatcher('b'),
+		newSingleCharacterMatcher('c'),
+	}
+
+	actual, err := isMatch(matchers, "123abc")
+	expected := true
+
+	if err != nil {
+		t.Errorf("Received error: %v", err)
+	}
+
+	if actual != expected {
+		t.Errorf("Expected: %v\nActual: %v", expected, actual)
+	}
+}
+
+func TestSuccessEndMatch(t *testing.T) {
+	matchers := []matcher{
+		newSingleCharacterMatcher('a'),
+		newSingleCharacterMatcher('b'),
+		newSingleCharacterMatcher('c'),
+	}
+
+	actual, err := isMatch(matchers, "abc456")
+	expected := true
+
+	if err != nil {
+		t.Errorf("Received error: %v", err)
+	}
+
+	if actual != expected {
+		t.Errorf("Expected: %v\nActual: %v", expected, actual)
+	}
+}
+
+func TestNoMatchMultipleCharactersMatch(t *testing.T) {
+	matchers := []matcher{
+		newSingleCharacterMatcher('a'),
+		newSingleCharacterMatcher('b'),
+		newSingleCharacterMatcher('c'),
+	}
+
+	actual, err := isMatch(matchers, "abd")
+	expected := false
+
+	if err != nil {
+		t.Errorf("Received error: %v", err)
+	}
+
+	if actual != expected {
+		t.Errorf("Expected: %v\nActual: %v", expected, actual)
 	}
 }
