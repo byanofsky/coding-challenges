@@ -2,127 +2,80 @@ package my_regexp
 
 import "testing"
 
-func TestCompileMatchSuccess(t *testing.T) {
-	re, err := Compile("abc")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-	actual, err := re.Match("abc")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
+func TestCompileMatch(t *testing.T) {
+	tests := []struct {
+		name    string
+		pattern string
+		input   string
+		want    bool
+	}{
+		{
+			name:    "exact match",
+			pattern: "abc",
+			input:   "abc",
+			want:    true,
+		},
+		{
+			name:    "no match",
+			pattern: "abc",
+			input:   "def",
+			want:    false,
+		},
+		{
+			name:    "wildcard match",
+			pattern: "a.c",
+			input:   "abc",
+			want:    true,
+		},
+		{
+			// TODO: Add similar test when pattern not found in substring
+			name:    "wildcard no match",
+			pattern: "a.c",
+			input:   "def",
+			want:    false,
+		},
+		{
+			name:    "star repitition match",
+			pattern: "b*",
+			input:   "bbb",
+			want:    true,
+		},
+		{
+			name:    "star repitition zero match",
+			pattern: "b*",
+			input:   "aaa",
+			want:    true,
+		},
+		{
+			name:    "star repitition no match",
+			pattern: "b*c",
+			input:   "aaa",
+			want:    false,
+		},
 	}
 
-	expected := true
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			re := mustCompile(t, tt.pattern)
 
-	if expected != actual {
-		t.Errorf("Expected: %v\nActual: %v", expected, actual)
+			got, err := re.Match(tt.input)
+			if err != nil {
+				t.Fatalf("Match(%q) unexpected error: %v", tt.input, err)
+			}
+
+			if got != tt.want {
+				t.Errorf("Match(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
 	}
 }
 
-func TestCompileMatchFail(t *testing.T) {
-	re, err := Compile("abc")
+func mustCompile(t *testing.T, pattern string) *Regexp {
+	t.Helper()
+
+	re, err := Compile(pattern)
 	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
+		t.Fatalf("Compile(%q) unexpected error: %v", pattern, err)
 	}
-	actual, err := re.Match("def")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	expected := false
-
-	if expected != actual {
-		t.Errorf("Expected: %v\nActual: %v", expected, actual)
-	}
-}
-
-func TestWildcard(t *testing.T) {
-	re, err := Compile(".b")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-	actual, err := re.Match("ab")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	expected := true
-
-	if expected != actual {
-		t.Errorf("Expected: %v\nActual: %v", expected, actual)
-	}
-}
-
-// Tests that patter after wildcard must match
-func TestWildcardNoMatch(t *testing.T) {
-	re, err := Compile(".c")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-	actual, err := re.Match("ab")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	expected := false
-
-	if expected != actual {
-		t.Errorf("Expected: %v\nActual: %v", expected, actual)
-	}
-}
-
-func TestRepetition(t *testing.T) {
-	re, err := Compile("b*")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-		t.FailNow()
-	}
-	actual, err := re.Match("bbb")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	expected := true
-
-	if expected != actual {
-		t.Errorf("Expected: %v\nActual: %v", expected, actual)
-	}
-}
-
-func TestRepetitionZeroTimesMatch(t *testing.T) {
-	re, err := Compile("b*")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-		t.FailNow()
-	}
-	actual, err := re.Match("aaa")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	expected := true
-
-	if expected != actual {
-		t.Errorf("Expected: %v\nActual: %v", expected, actual)
-	}
-}
-
-// Test when repition pattern after the repition
-func TestRepetitionNoMatchPatternAfter(t *testing.T) {
-	re, err := Compile("b*c")
-	if err != nil {
-		// TODO: Update tests to fail now
-		t.Errorf("Unexpected error: %v", err)
-		t.FailNow()
-	}
-	actual, err := re.Match("bbb")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	expected := false
-
-	if expected != actual {
-		t.Errorf("Expected: %v\nActual: %v", expected, actual)
-	}
+	return re
 }

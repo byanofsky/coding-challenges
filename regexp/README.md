@@ -22,3 +22,5 @@ This solves the bonus problem from the grep coding challenge: https://codingchal
 - Matcher function. Variation of visitor pattern (or my understanding of that pattern). Delegate matching to each matcher. Decides that to do next depending on current match result. Will enable such things as repition.
 - a next function is called from each matcher to determine what to call next. This is controlled in outer function.
 - For start character, will need to intercept in the for loop to prevent continuing to execute matchers against each char in string
+- Refactoring parse to align with steps in compilation process
+- Improvements to test according to Claude using a loop
