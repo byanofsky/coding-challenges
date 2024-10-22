@@ -4,7 +4,13 @@ This solves the bonus problem from the grep coding challenge: https://codingchal
 
 > if you took the easy path, you could go back and try implementing your own regex engine.
 
+This is my attempt with little to no help or guidance on how to build to build a regex engine.
+
+Next, I will create a v2 following the tutorial [Let's Build a Regex Engine](https://kean.blog/post/lets-build-regex).
+
 ## Implementation Notes
+
+This are very rought notes I took during implementation. I will go back and formalize these into a blog post.
 
 - Package structure. helpers to contain all non-public. types to contain structs and constructors. my_regexp.go to contain exported functions.
 - Define a compile function. Similar to regexp, this will be repsonsible for taking pattern and outputting a regexp struct, later used to match
