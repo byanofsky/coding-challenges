@@ -52,6 +52,18 @@ func TestCompileMatch(t *testing.T) {
 			input:   "aaa",
 			want:    false,
 		},
+		{
+			name:    "plus repitition match",
+			pattern: "b+",
+			input:   "bbb",
+			want:    true,
+		},
+		{
+			name:    "plus repitition no match",
+			pattern: "b+",
+			input:   "aaa",
+			want:    false,
+		},
 	}
 
 	for _, tt := range tests {

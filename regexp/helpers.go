@@ -26,6 +26,9 @@ func scan(pattern string) []token {
 			case '*':
 				t = "*"
 				kind = Repetition
+			case '+':
+				t = "+"
+				kind = Repetition
 			case '.':
 				t = "."
 				kind = Wildcard
@@ -40,20 +43,28 @@ func scan(pattern string) []token {
 	return tokens
 }
 
+type repitionConstructor = func(matcher) matcher
+
 // TODO: Return pointer to matcher
 func parse(tokens []token) ([]matcher, error) {
+	// TODO: Move to top level definition
+	repitionMap := map[string]repitionConstructor{
+		"*": newStarRepition,
+		"+": newPlusRepitition,
+	}
+
 	matchers := make([]matcher, 0)
 
 	i := 0
 	for i < len(tokens) {
 		token := tokens[i]
-		var matcher matcher
+		var m matcher
 
 		switch token.kind {
 		case SingleCharacter:
-			matcher = newSingleCharacterMatcher(token.token[0])
+			m = newSingleCharacterMatcher(token.token[0])
 		case Wildcard:
-			matcher = newWildcardMatcher()
+			m = newWildcardMatcher()
 		case Repetition:
 			return nil, fmt.Errorf("possible reptition followed by repition. index: %d", i)
 		default:
@@ -62,14 +73,16 @@ func parse(tokens []token) ([]matcher, error) {
 
 		if i+1 < len(tokens) {
 			// Peak next char to check for repition
-			// TODO: Abstrac to is Reptition function
-			if tokens[i+1].token == string('*') {
-				matcher = newStarRepition(matcher)
-				i++
+			nextToken := tokens[i+1].token
+			if rm, ok := repitionMap[nextToken]; ok {
+				matchers = append(matchers, rm(m))
+				// Skip to char after repition
+				i = i + 2
+				continue
 			}
 		}
 
-		matchers = append(matchers, matcher)
+		matchers = append(matchers, m)
 		i++
 	}
 	return matchers, nil

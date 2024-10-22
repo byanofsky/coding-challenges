@@ -31,6 +31,7 @@ func newWildcardMatcher() matcher {
 }
 
 func newStarRepition(m matcher) matcher {
+	// TODO: Extract function definitions so functions are not anonymous
 	f := func(s string, i int, mIdx int, next nextMatcher) (bool, error) {
 		subi := i
 		for subi < len(s) {
@@ -61,5 +62,44 @@ func newStarRepition(m matcher) matcher {
 		return false, nil
 	}
 
+	return matcher{isMatch: f}
+}
+
+func newPlusRepitition(m matcher) matcher {
+	f := func(s string, i int, mIdx int, next nextMatcher) (bool, error) {
+		matches := 0
+		subi := i
+		for subi < len(s) {
+			// The next function always returns true, because next only called if matcher matched
+			result, err := m.isMatch(s, subi, mIdx, func(s string, i, mIdx int) (bool, error) { return true, nil })
+			if err != nil {
+				return false, err
+			}
+			if !result {
+				if matches == 0 {
+					// Must be at least one match
+					return false, nil
+				}
+				break
+			}
+			matches++
+			subi++
+		}
+
+		// subi will now be either out of bounds of list or index that didn't match
+
+		for subi >= i {
+			result, err := next(s, subi, mIdx+1)
+			if err != nil {
+				return false, err
+			}
+			if result {
+				return result, nil
+			}
+			subi--
+		}
+
+		return false, nil
+	}
 	return matcher{isMatch: f}
 }
