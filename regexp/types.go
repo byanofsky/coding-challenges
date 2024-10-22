@@ -1,17 +1,13 @@
 package my_regexp
 
-type tokenType int
+type tokenType string
 
 const (
-	SingleCharacter tokenType = iota
-	Wildcard
-	EscapeSequence
-	Repetition
+	SingleCharacter tokenType = "SingleCharacter"
+	Wildcard        tokenType = "Wildcard"
+	EscapeSequence  tokenType = "EscapeSequence"
+	Repetition      tokenType = "Repitition"
 )
-
-func (t tokenType) String() string {
-	return [...]string{"SingleCharacter", "Wildcard", "EscapeSequence", "Repetition"}[t]
-}
 
 type token struct {
 	kind  tokenType
