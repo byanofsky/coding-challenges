@@ -24,3 +24,5 @@ This solves the bonus problem from the grep coding challenge: https://codingchal
 - For start character, will need to intercept in the for loop to prevent continuing to execute matchers against each char in string
 - Refactoring parse to align with steps in compilation process
 - Improvements to test according to Claude using a loop
+- Refactor repitition matcher to a generic. Use compisition for each manager
+- Use a map to determine if is repitiion character and get constructor for repitition matcher
