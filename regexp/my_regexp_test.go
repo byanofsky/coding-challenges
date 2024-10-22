@@ -2,6 +2,7 @@ package my_regexp
 
 import "testing"
 
+// TODO: Make these basic tests with exact match
 func TestCompileMatch(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -62,6 +63,30 @@ func TestCompileMatch(t *testing.T) {
 			name:    "plus repitition no match",
 			pattern: "b+",
 			input:   "aaa",
+			want:    false,
+		},
+		{
+			name:    "wildcard repitition match",
+			pattern: ".*",
+			input:   "abc",
+			want:    true,
+		},
+		{
+			name:    "wildcard repitition no match",
+			pattern: ".*d",
+			input:   "abc",
+			want:    false,
+		},
+		{
+			name:    "wildcard backtracking",
+			pattern: ".*a",
+			input:   "abc",
+			want:    true,
+		},
+		{
+			name:    "wildcard repitition no match",
+			pattern: ".*d",
+			input:   "abc",
 			want:    false,
 		},
 	}
