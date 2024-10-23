@@ -22,6 +22,19 @@ func NewStringParser(prefix string) *StringParser {
 	return &StringParser{prefix: prefix}
 }
 
+type CharacterParser struct{}
+
+func (p CharacterParser) parse(s string) (after string, found bool) {
+	if len(s) == 0 {
+		return s, false
+	}
+	return s[1:], true
+}
+
+func NewCharacterParser() *CharacterParser {
+	return &CharacterParser{}
+}
+
 type RangeQuantifier struct {
 	lowerBound int
 	upperBound int
