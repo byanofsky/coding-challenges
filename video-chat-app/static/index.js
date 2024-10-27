@@ -72,7 +72,8 @@ class WebSocketClient {
 const client = new WebSocketClient("ws://localhost:8000/signal");
 client.connect();
 
-function btnClick() {
+function findClient() {
+  const input = document.getElementById("clientId");
   // Send a message
-  client.sendMessage({ type: "message", content: "Hello server!" });
+  client.sendMessage(`findClient:${input.value}`);
 }

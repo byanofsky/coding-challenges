@@ -64,6 +64,22 @@ func main() {
 				connMap[clientId] = conn
 				log.Printf("client connected: %s", clientId)
 			}
+			if strings.Contains(m, "findClient") {
+				parts := strings.Split(m, ":")
+				clientToFind := parts[1]
+				log.Printf("findClient. requester: %s. to: %s", clientId, clientToFind)
+
+				_, exists := connMap[clientToFind]
+				var bytes []byte
+				if exists {
+					bytes = []byte("ok")
+				} else {
+					bytes = []byte("not found")
+				}
+				if err := conn.WriteMessage(websocket.TextMessage, bytes); err != nil {
+					log.Printf("error writing message %v", err)
+				}
+			}
 		}
 	})
 
