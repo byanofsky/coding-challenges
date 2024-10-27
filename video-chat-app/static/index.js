@@ -15,6 +15,8 @@ class WebSocketClient {
       this.ws.onopen = () => {
         console.log("Connected to WebSocket server");
         this.reconnectAttempts = 0;
+        const clientId = Math.floor(Math.random() * 100_000_000) + 1;
+        this.sendMessage(`clientId:${clientId}`);
       };
 
       this.ws.onmessage = (event) => {

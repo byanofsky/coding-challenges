@@ -5,6 +5,7 @@ import (
 	"html"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/websocket"
 )
@@ -14,6 +15,8 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
+
+var connMap = make(map[string]*websocket.Conn)
 
 func main() {
 	// Serve static files
@@ -32,15 +35,34 @@ func main() {
 			log.Println(err)
 			return
 		}
+		var clientId string
+
 		for {
-			messageType, p, err := conn.ReadMessage()
+			_, p, err := conn.ReadMessage()
 			if err != nil {
+				if websocket.IsCloseError(err) || websocket.IsUnexpectedCloseError(err) {
+					log.Printf("Close client %s", clientId)
+					delete(connMap, clientId)
+				}
 				log.Println(err)
 				return
 			}
-			if err := conn.WriteMessage(messageType, p); err != nil {
-				log.Println(err)
-				return
+			// if err := conn.WriteMessage(messageType, p); err != nil {
+			// 	log.Println(err)
+			// 	return
+			// }
+			m := string(p)
+			// TODO: More robust handling of message protocol
+			if strings.Contains(m, "clientId") {
+				if clientId != "" {
+					log.Printf("client called twice")
+					conn.Close()
+					return
+				}
+				parts := strings.Split(m, ":")
+				clientId = parts[1]
+				connMap[clientId] = conn
+				log.Printf("client connected: %s", clientId)
 			}
 		}
 	})
