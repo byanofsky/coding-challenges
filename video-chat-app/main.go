@@ -5,6 +5,7 @@ import (
 	"html"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gorilla/websocket"
@@ -51,7 +52,10 @@ func main() {
 			// 	log.Println(err)
 			// 	return
 			// }
-			m := string(p)
+			m, err := strconv.Unquote(string(p))
+			if err != nil {
+				fmt.Printf("error processing message: %v", err)
+			}
 			// TODO: More robust handling of message protocol
 			if strings.Contains(m, "clientId") {
 				if clientId != "" {
@@ -69,7 +73,7 @@ func main() {
 				clientToFind := parts[1]
 				log.Printf("findClient. requester: %s. to: %s", clientId, clientToFind)
 
-				_, exists := connMap[clientToFind]
+				toConn, exists := connMap[clientToFind]
 				var bytes []byte
 				if exists {
 					bytes = []byte("ok")
@@ -77,6 +81,27 @@ func main() {
 					bytes = []byte("not found")
 				}
 				if err := conn.WriteMessage(websocket.TextMessage, bytes); err != nil {
+					log.Printf("error writing message %v", err)
+				}
+				after, found := strings.CutPrefix(m, "findClient:")
+				if !found {
+					log.Println("unable to find findClient:")
+				}
+				message := fmt.Sprintf("%s:%s", "remote", after)
+				if err := toConn.WriteMessage(websocket.TextMessage, []byte(message)); err != nil {
+					log.Printf("error writing message %v", err)
+				}
+			}
+			if strings.Contains(m, "answer") {
+				parts := strings.Split(m, ":")
+				toClientId := parts[1]
+				log.Printf("answer. requester: %s. to: %s", clientId, toClientId)
+
+				toConn, exists := connMap[toClientId]
+				if !exists {
+					log.Printf("cannot find client %s", toClientId)
+				}
+				if err := toConn.WriteMessage(websocket.TextMessage, []byte(m)); err != nil {
 					log.Printf("error writing message %v", err)
 				}
 			}

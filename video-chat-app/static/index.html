@@ -9,10 +9,13 @@
 </head>
 
 <body>
+  <p>Client: <span id="client"></span></p>
   <input id="clientId" />
   <button onclick="findClient()">Find Client</button>
   <button onclick="startVideo()">Start Video</button>
-  <video id="stream" autoplay></video>
+  <button onclick="call()">Call</button>
+  <button onclick="acceptCalls()">Accept</button>
+  <video id="stream" autoplay playsinline></video>
 </body>
 
 </html>
