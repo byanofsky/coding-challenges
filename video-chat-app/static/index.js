@@ -77,3 +77,14 @@ function findClient() {
   // Send a message
   client.sendMessage(`findClient:${input.value}`);
 }
+
+async function startVideo() {
+  // TODO: Erro rhandling
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: true,
+    audio: false,
+  });
+  const video = document.getElementById("stream");
+  const videoTracks = stream.getVideoTracks();
+  video.srcObject = stream;
+}
