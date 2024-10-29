@@ -9,9 +9,9 @@ class WebSocketClient {
     this.messageHandlers = [];
   }
 
-  connect() {
+  connect(clientId) {
     try {
-      this.ws = new WebSocket(this.url);
+      this.ws = new WebSocket(this.url + "?clientId=" + clientId);
 
       this.ws.onopen = () => {
         console.log("Connected to WebSocket server");
@@ -85,7 +85,6 @@ class WebSocketClient {
 }
 
 const client = new WebSocketClient("ws://localhost:8000/signal");
-client.connect();
 
 let stream;
 
@@ -164,3 +163,13 @@ function gotRemoteStream(e) {
     console.log("pc2 received remote stream");
   }
 }
+
+async function connect() {
+  const localClientId = document.getElementById("localClientId").value;
+  client.connect(localClientId);
+}
+
+document.getElementById("connectForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  connect();
+});

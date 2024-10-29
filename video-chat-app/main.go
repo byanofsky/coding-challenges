@@ -31,19 +31,23 @@ func main() {
 		fmt.Fprintf(w, "Hello, %q", html.EscapeString(r.URL.Path))
 	})
 	http.HandleFunc("/signal", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		localClientId := q.Get("clientId")
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		var clientId string
+		log.Printf("client connected. clientId: %s", localClientId)
+
+		connMap[localClientId] = conn
 
 		for {
 			_, p, err := conn.ReadMessage()
 			if err != nil {
 				if websocket.IsCloseError(err) || websocket.IsUnexpectedCloseError(err) {
-					log.Printf("Close client %s", clientId)
-					delete(connMap, clientId)
+					log.Printf("client closed. clientId: %s", localClientId)
+					delete(connMap, localClientId)
 				}
 				log.Println(err)
 				return
@@ -56,22 +60,10 @@ func main() {
 			if err != nil {
 				fmt.Printf("error processing message: %v", err)
 			}
-			// TODO: More robust handling of message protocol
-			if strings.Contains(m, "clientId") {
-				if clientId != "" {
-					log.Printf("client called twice")
-					conn.Close()
-					return
-				}
-				parts := strings.Split(m, ":")
-				clientId = parts[1]
-				connMap[clientId] = conn
-				log.Printf("client connected: %s", clientId)
-			}
 			if strings.Contains(m, "findClient") {
 				parts := strings.Split(m, ":")
 				clientToFind := parts[1]
-				log.Printf("findClient. requester: %s. to: %s", clientId, clientToFind)
+				log.Printf("findClient. requester: %s. to: %s", localClientId, clientToFind)
 
 				toConn, exists := connMap[clientToFind]
 				var bytes []byte
@@ -95,7 +87,7 @@ func main() {
 			if strings.Contains(m, "answer") {
 				parts := strings.Split(m, ":")
 				toClientId := parts[1]
-				log.Printf("answer. requester: %s. to: %s", clientId, toClientId)
+				log.Printf("answer. requester: %s. to: %s", localClientId, toClientId)
 
 				toConn, exists := connMap[toClientId]
 				if !exists {

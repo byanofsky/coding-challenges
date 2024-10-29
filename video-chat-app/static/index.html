@@ -5,11 +5,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document</title>
-  <script src="/index.js"></script>
 </head>
 
 <body>
   <p>Client: <span id="client"></span></p>
+  <div>
+    <form id="connectForm">
+      <input id="localClientId" />
+      <button type="submit">Connect</button>
+    </form>
+  </div>
   <input id="clientId" />
   <button onclick="findClient()">Find Client</button>
   <button onclick="startVideo()">Start Video</button>
@@ -17,5 +22,7 @@
   <button onclick="acceptCalls()">Accept</button>
   <video id="stream" autoplay playsinline></video>
 </body>
+
+<script src="/index.js"></script>
 
 </html>
