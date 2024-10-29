@@ -16,8 +16,6 @@ class WebSocketClient {
       this.ws.onopen = () => {
         console.log("Connected to WebSocket server");
         this.reconnectAttempts = 0;
-        const clientId = Math.floor(Math.random() * 100_000_000) + 1;
-        this.sendMessage(`clientId:${clientId}`);
       };
 
       this.ws.onmessage = (event) => {
@@ -99,35 +97,41 @@ async function startVideo() {
 }
 
 async function call() {
-  const videoTracks = stream.getVideoTracks();
-  if (videoTracks.length > 0) {
-    console.log(`Using video device: ${videoTracks[0].label}`);
-  }
-
-  const pc = new RTCPeerConnection();
-  pc.addEventListener("icecandidate", (e) => console.log(e));
-  pc.addEventListener("iceconnectionstatechange", (e) => console.log(e));
-
-  stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-
-  try {
-    const offer = await pc.createOffer({ offerToReceiveVideo: 1 });
-    await pc.setLocalDescription(offer);
-    console.log("ofer", offer);
-    const input = document.getElementById("clientId");
-    // Send a message
-    client.sendMessage(`findClient:${input.value}:${offer.sdp}`);
-  } catch (e) {
-    console.error(e);
-  }
-  client.addMessageHandler("answer", async (message) => {
-    console.log("answer", message);
-    const colonIdx = message.indexOf(":");
-    await pc.setRemoteDescription({
-      type: "answer",
-      sdp: message.slice(colonIdx + 1),
-    });
+  const remoteClientId = document.getElementById("remoteClientId").value;
+  client.sendMessage({
+    to: remoteClientId,
+    from: "local client id",
+    message: "hello world",
   });
+  // const videoTracks = stream.getVideoTracks();
+  // if (videoTracks.length > 0) {
+  //   console.log(`Using video device: ${videoTracks[0].label}`);
+  // }
+
+  // const pc = new RTCPeerConnection();
+  // pc.addEventListener("icecandidate", (e) => console.log(e));
+  // pc.addEventListener("iceconnectionstatechange", (e) => console.log(e));
+
+  // stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
+  // try {
+  //   const offer = await pc.createOffer({ offerToReceiveVideo: 1 });
+  //   await pc.setLocalDescription(offer);
+  //   console.log("ofer", offer);
+  //   const input = document.getElementById("clientId");
+  //   // Send a message
+  //   client.sendMessage(`findClient:${input.value}:${offer.sdp}`);
+  // } catch (e) {
+  //   console.error(e);
+  // }
+  // client.addMessageHandler("answer", async (message) => {
+  //   console.log("answer", message);
+  //   const colonIdx = message.indexOf(":");
+  //   await pc.setRemoteDescription({
+  //     type: "answer",
+  //     sdp: message.slice(colonIdx + 1),
+  //   });
+  // });
 }
 
 async function acceptCalls() {
@@ -172,4 +176,9 @@ async function connect() {
 document.getElementById("connectForm").addEventListener("submit", (e) => {
   e.preventDefault();
   connect();
+});
+
+document.getElementById("callForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  call();
 });
