@@ -20,16 +20,13 @@ class WebSocketClient {
 
       this.ws.onmessage = (event) => {
         // const message = JSON.parse(event.data);
-        const message = event.data;
+        const message = JSON.parse(event.data);
         console.log("Received message:", message);
         // Handle incoming message
-        const splitIdx = message.indexOf(":");
-        const type = message.slice(0, splitIdx);
-        const rest = message.slice(splitIdx + 1);
-
         this.messageHandlers.forEach(([t, fn]) => {
+          const { type, from, data } = message;
           if (t === type) {
-            fn(rest);
+            fn({ from, data });
           }
         });
       };
@@ -48,6 +45,7 @@ class WebSocketClient {
     }
   }
 
+  // TODO: save clientid for reconnect attempts
   attemptReconnect() {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
@@ -86,6 +84,8 @@ const client = new WebSocketClient("ws://localhost:8000/signal");
 
 let stream;
 
+let localClientId;
+
 async function startVideo() {
   // TODO: Erro rhandling
   stream = await navigator.mediaDevices.getUserMedia({
@@ -98,56 +98,42 @@ async function startVideo() {
 
 async function call() {
   const remoteClientId = document.getElementById("remoteClientId").value;
-  client.sendMessage({
-    to: remoteClientId,
-    from: "local client id",
-    message: "hello world",
-  });
-  // const videoTracks = stream.getVideoTracks();
-  // if (videoTracks.length > 0) {
-  //   console.log(`Using video device: ${videoTracks[0].label}`);
-  // }
 
-  // const pc = new RTCPeerConnection();
+  const videoTracks = stream.getVideoTracks();
+  if (videoTracks.length > 0) {
+    console.log(`Using video device: ${videoTracks[0].label}`);
+  }
+
+  const pc = new RTCPeerConnection();
   // pc.addEventListener("icecandidate", (e) => console.log(e));
   // pc.addEventListener("iceconnectionstatechange", (e) => console.log(e));
 
-  // stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+  stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
-  // try {
-  //   const offer = await pc.createOffer({ offerToReceiveVideo: 1 });
-  //   await pc.setLocalDescription(offer);
-  //   console.log("ofer", offer);
-  //   const input = document.getElementById("clientId");
-  //   // Send a message
-  //   client.sendMessage(`findClient:${input.value}:${offer.sdp}`);
-  // } catch (e) {
-  //   console.error(e);
-  // }
-  // client.addMessageHandler("answer", async (message) => {
-  //   console.log("answer", message);
-  //   const colonIdx = message.indexOf(":");
-  //   await pc.setRemoteDescription({
-  //     type: "answer",
-  //     sdp: message.slice(colonIdx + 1),
-  //   });
-  // });
-}
-
-async function acceptCalls() {
-  const clientId = document.getElementById("clientId").value;
-  client.addMessageHandler("remote", async (message) => {
-    const pc = new RTCPeerConnection();
-    pc.addEventListener("track", gotRemoteStream);
-    const colonIdx = message.indexOf(":");
-    await pc.setRemoteDescription({
-      type: "offer",
-      sdp: message.slice(colonIdx + 1),
+  try {
+    const offer = await pc.createOffer({ offerToReceiveVideo: 1 });
+    await pc.setLocalDescription(offer);
+    // Send a message
+    client.sendMessage({
+      to: remoteClientId,
+      from: localClientId,
+      message: JSON.stringify({
+        type: "offer",
+        from: localClientId,
+        data: {
+          sdp: offer.sdp,
+        },
+      }),
     });
-
-    const answer = await pc.createAnswer();
-    pc.setLocalDescription(answer);
-    client.sendMessage(`answer:${clientId}:${answer.sdp}`);
+  } catch (e) {
+    console.error(e);
+  }
+  client.addMessageHandler("answer", async ({ from, data }) => {
+    console.log("answer", from, data);
+    await pc.setRemoteDescription({
+      type: "answer",
+      sdp: data.sdp,
+    });
   });
 }
 
@@ -169,8 +155,34 @@ function gotRemoteStream(e) {
 }
 
 async function connect() {
-  const localClientId = document.getElementById("localClientId").value;
+  localClientId = document.getElementById("localClientId").value;
   client.connect(localClientId);
+  client.addMessageHandler("offer", async ({ from, data }) => {
+    console.log(
+      `received message. From: ${from}. Data: ${JSON.stringify(data)}`
+    );
+    const pc = new RTCPeerConnection();
+    pc.addEventListener("track", gotRemoteStream);
+    await pc.setRemoteDescription({
+      type: "offer",
+      sdp: data.sdp,
+    });
+
+    const answer = await pc.createAnswer();
+    pc.setLocalDescription(answer);
+    console.log("send answer");
+    client.sendMessage({
+      to: from,
+      from: localClientId,
+      message: JSON.stringify({
+        type: "answer",
+        from: localClientId,
+        data: {
+          sdp: answer.sdp,
+        },
+      }),
+    });
+  });
 }
 
 document.getElementById("connectForm").addEventListener("submit", (e) => {
@@ -182,3 +194,7 @@ document.getElementById("callForm").addEventListener("submit", (e) => {
   e.preventDefault();
   call();
 });
+
+document
+  .getElementById("startVideoBtn")
+  .addEventListener("click", () => startVideo());

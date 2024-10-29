@@ -72,14 +72,7 @@ func main() {
 				continue
 			}
 
-			m := MessageEnvelope{To: d.To, From: localClientId, Message: d.Message}
-			b, err := json.Marshal(m)
-			if err != nil {
-				log.Printf("error marshalling message: %v", err)
-				continue
-			}
-
-			if err := toConn.WriteMessage(websocket.TextMessage, b); err != nil {
+			if err := toConn.WriteMessage(websocket.TextMessage, []byte(d.Message)); err != nil {
 				log.Printf("error writing message: %v", err)
 			}
 		}
