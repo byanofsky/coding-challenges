@@ -11,9 +11,9 @@ import (
 )
 
 type MessageEnvelope struct {
-	To      string
-	From    string
-	Message string
+	To      string `json:"to"`
+	From    string `json:"from"`
+	Message string `json:"message"`
 }
 
 // Using defaults from https://pkg.go.dev/github.com/gorilla/websocket#hdr-Overview
@@ -64,51 +64,24 @@ func main() {
 				continue
 			}
 			log.Printf("message: %s", d)
-			// if err := conn.WriteMessage(messageType, p); err != nil {
-			// 	log.Println(err)
-			// 	return
-			// }
-			// m, err := strconv.Unquote(string(p))
-			// if err != nil {
-			// 	fmt.Printf("error processing message: %v", err)
-			// }
-			// if strings.Contains(m, "findClient") {
-			// 	parts := strings.Split(m, ":")
-			// 	clientToFind := parts[1]
-			// 	log.Printf("findClient. requester: %s. to: %s", localClientId, clientToFind)
 
-			// 	toConn, exists := connMap[clientToFind]
-			// 	var bytes []byte
-			// 	if exists {
-			// 		bytes = []byte("ok")
-			// 	} else {
-			// 		bytes = []byte("not found")
-			// 	}
-			// 	if err := conn.WriteMessage(websocket.TextMessage, bytes); err != nil {
-			// 		log.Printf("error writing message %v", err)
-			// 	}
-			// 	after, found := strings.CutPrefix(m, "findClient:")
-			// 	if !found {
-			// 		log.Println("unable to find findClient:")
-			// 	}
-			// 	message := fmt.Sprintf("%s:%s", "remote", after)
-			// 	if err := toConn.WriteMessage(websocket.TextMessage, []byte(message)); err != nil {
-			// 		log.Printf("error writing message %v", err)
-			// 	}
-			// }
-			// if strings.Contains(m, "answer") {
-			// 	parts := strings.Split(m, ":")
-			// 	toClientId := parts[1]
-			// 	log.Printf("answer. requester: %s. to: %s", localClientId, toClientId)
+			toClientId := d.To
+			toConn, found := connMap[toClientId]
+			if !found {
+				log.Printf("client not found: %s", toClientId)
+				continue
+			}
 
-			// 	toConn, exists := connMap[toClientId]
-			// 	if !exists {
-			// 		log.Printf("cannot find client %s", toClientId)
-			// 	}
-			// 	if err := toConn.WriteMessage(websocket.TextMessage, []byte(m)); err != nil {
-			// 		log.Printf("error writing message %v", err)
-			// 	}
-			// }
+			m := MessageEnvelope{To: d.To, From: localClientId, Message: d.Message}
+			b, err := json.Marshal(m)
+			if err != nil {
+				log.Printf("error marshalling message: %v", err)
+				continue
+			}
+
+			if err := toConn.WriteMessage(websocket.TextMessage, b); err != nil {
+				log.Printf("error writing message: %v", err)
+			}
 		}
 	})
 
