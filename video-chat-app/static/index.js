@@ -86,6 +86,8 @@ let stream;
 
 let localClientId;
 
+let pc;
+
 async function startVideo() {
   // TODO: Erro rhandling
   stream = await navigator.mediaDevices.getUserMedia({
@@ -104,8 +106,22 @@ async function call() {
     console.log(`Using video device: ${videoTracks[0].label}`);
   }
 
-  const pc = new RTCPeerConnection();
-  // pc.addEventListener("icecandidate", (e) => console.log(e));
+  pc.addEventListener("icecandidate", (e) => {
+    console.log("ice candidate", e);
+    if (e.candidate) {
+      client.sendMessage({
+        to: remoteClientId,
+        from: localClientId,
+        message: JSON.stringify({
+          type: "new-ice-candidate",
+          from: localClientId,
+          data: {
+            candidate: e.candidate,
+          },
+        }),
+      });
+    }
+  });
   // pc.addEventListener("iceconnectionstatechange", (e) => console.log(e));
 
   stream.getTracks().forEach((track) => pc.addTrack(track, stream));
@@ -155,13 +171,13 @@ function gotRemoteStream(e) {
 }
 
 async function connect() {
+  pc = new RTCPeerConnection();
   localClientId = document.getElementById("localClientId").value;
   client.connect(localClientId);
   client.addMessageHandler("offer", async ({ from, data }) => {
     console.log(
       `received message. From: ${from}. Data: ${JSON.stringify(data)}`
     );
-    const pc = new RTCPeerConnection();
     pc.addEventListener("track", gotRemoteStream);
     await pc.setRemoteDescription({
       type: "offer",
@@ -182,6 +198,12 @@ async function connect() {
         },
       }),
     });
+  });
+
+  client.addMessageHandler("new-ice-candidate", async ({ from, data }) => {
+    console.log("receive ice candidate", from, data);
+    const candidate = new RTCIceCandidate(data.candidate);
+    pc.addIceCandidate(candidate);
   });
 }
 
