@@ -53,19 +53,19 @@ func TestParseCharacter(t *testing.T) {
 	tests := []struct {
 		name   string
 		input  string
-		result string
+		result rune
 		found  bool
 		after  string
 	}{{
 		name:   "positive: basic case",
 		input:  "abc",
-		result: "a",
+		result: 'a',
 		found:  true,
 		after:  "bc",
 	}, {
 		name:   "negative: empty",
 		input:  "",
-		result: "",
+		result: 0,
 		found:  false,
 		after:  "",
 	}}
@@ -73,7 +73,10 @@ func TestParseCharacter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := NewCharacterParser()
-			result, after, found := p.parse(tt.input)
+			result, after, found, err := p.parse(tt.input)
+			if err != nil {
+				t.Fatalf("input %q unexpected error: %v", tt.input, err)
+			}
 			if result != tt.result {
 				t.Fatalf("input %q, result %v, want %v", tt.input, result, tt.result)
 

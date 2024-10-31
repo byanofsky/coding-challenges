@@ -21,17 +21,19 @@ func NewStringParser(p string) Parser[string] {
 
 }
 
-type CharacterParser struct{}
-
-func (p CharacterParser) parse(s string) (result string, after string, found bool) {
-	if len(s) == 0 {
-		return "", s, false
+func NewCharacterParser() Parser[rune] {
+	return Parser[rune]{
+		parse: func(s string) (result rune, substring string, found bool, err error) {
+			if len(s) == 0 {
+				return
+			}
+			found = true
+			runes := []rune(s)
+			result = runes[0]
+			substring = string(runes[1:])
+			return
+		},
 	}
-	return s[0:1], s[1:], true
-}
-
-func NewCharacterParser() *CharacterParser {
-	return &CharacterParser{}
 }
 
 type RangeQuantifier struct {
