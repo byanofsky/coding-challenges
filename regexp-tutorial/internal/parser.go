@@ -24,11 +24,11 @@ func NewStringParser(prefix string) *StringParser {
 
 type CharacterParser struct{}
 
-func (p CharacterParser) parse(s string) (after string, found bool) {
+func (p CharacterParser) parse(s string) (result string, after string, found bool) {
 	if len(s) == 0 {
-		return s, false
+		return "", s, false
 	}
-	return s[1:], true
+	return s[0:1], s[1:], true
 }
 
 func NewCharacterParser() *CharacterParser {

@@ -51,26 +51,33 @@ func TestParseRangeQuantifier(t *testing.T) {
 
 func TestParseCharacter(t *testing.T) {
 	tests := []struct {
-		name  string
-		input string
-		found bool
-		after string
+		name   string
+		input  string
+		result string
+		found  bool
+		after  string
 	}{{
-		name:  "positive: basic case",
-		input: "abc",
-		found: true,
-		after: "bc",
+		name:   "positive: basic case",
+		input:  "abc",
+		result: "a",
+		found:  true,
+		after:  "bc",
 	}, {
-		name:  "negative: empty",
-		input: "",
-		found: false,
-		after: "",
+		name:   "negative: empty",
+		input:  "",
+		result: "",
+		found:  false,
+		after:  "",
 	}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := NewCharacterParser()
-			after, found := p.parse(tt.input)
+			result, after, found := p.parse(tt.input)
+			if result != tt.result {
+				t.Fatalf("input %q, result %v, want %v", tt.input, result, tt.result)
+
+			}
 			if found != tt.found {
 				t.Fatalf("input %q, found %v, want %v", tt.input, found, tt.found)
 			}
