@@ -6,20 +6,19 @@ import (
 	"unicode"
 )
 
-type Parser interface {
-	parse(s string) (string, error)
+type Parser[A any] struct {
+	parse func(s string) (result A, substring string, found bool, err error)
 }
 
-type StringParser struct {
-	prefix string
-}
+func NewStringParser(p string) Parser[string] {
+	return Parser[string]{
+		parse: func(s string) (result string, substring string, found bool, err error) {
+			result = ""
+			substring, found = strings.CutPrefix(s, p)
+			return
+		},
+	}
 
-func (p StringParser) parse(s string) (after string, found bool) {
-	return strings.CutPrefix(s, p.prefix)
-}
-
-func NewStringParser(prefix string) *StringParser {
-	return &StringParser{prefix: prefix}
 }
 
 type CharacterParser struct{}
@@ -66,7 +65,7 @@ Returns a tuple of three values:
 2 and 3 are returned iff a match is found.
 */
 func parseRangeQuantifier(s string) (match bool, rq *RangeQuantifier, after string) {
-	after, found := NewStringParser("{").parse(s)
+	_, after, found, _ := NewStringParser("{").parse(s)
 	if !found {
 		return false, nil, s
 	}
@@ -76,7 +75,7 @@ func parseRangeQuantifier(s string) (match bool, rq *RangeQuantifier, after stri
 		return false, nil, s
 	}
 
-	after, found = NewStringParser("}").parse(after)
+	_, after, found, _ = NewStringParser("}").parse(after)
 	if !found {
 		return false, nil, s
 	}
