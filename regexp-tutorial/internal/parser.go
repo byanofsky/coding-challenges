@@ -10,6 +10,32 @@ type Parser[A any] struct {
 	parse func(s string) (result A, substring string, found bool, err error)
 }
 
+// func (p Parser[A]) filter(predicate func()) Parser[A] {
+// 	return Parser[A]{}
+// }
+
+func FlatMap[A any, B any](p Parser[A], transform func(A) Parser[B]) Parser[B] {
+	return Parser[B]{
+		parse: func(s string) (result B, substring string, found bool, err error) {
+			a, intermediate, pFound, _ := p.parse(s)
+			if !pFound {
+				return result, substring, false, nil
+			}
+			return transform(a).parse(intermediate)
+		},
+	}
+}
+
+func Map[A any, B any](p Parser[A], transform func(A) B) Parser[B] {
+	return FlatMap(p, func(match A) Parser[B] {
+		return Parser[B]{
+			parse: func(s string) (result B, substring string, found bool, err error) {
+				return transform(match), s, true, nil
+			},
+		}
+	})
+}
+
 func NewStringParser(p string) Parser[string] {
 	return Parser[string]{
 		parse: func(s string) (result string, substring string, found bool, err error) {
