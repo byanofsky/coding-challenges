@@ -26,14 +26,44 @@ func FlatMap[A any, B any](p Parser[A], transform func(A) Parser[B]) Parser[B] {
 	}
 }
 
-func Map[A any, B any](p Parser[A], transform func(A) B) Parser[B] {
+func Map[A any, B any](p Parser[A], transform func(A) (b B, found bool)) Parser[B] {
 	return FlatMap(p, func(match A) Parser[B] {
 		return Parser[B]{
 			parse: func(s string) (result B, substring string, found bool, err error) {
-				return transform(match), s, true, nil
+				result, found = transform(match)
+				return result, s, found, nil
 			},
 		}
 	})
+}
+
+func NewOneOrMoreParser[A any](p Parser[A]) Parser[[]A] {
+	zeroOrMore := NewZeroOrMoreParser(p)
+	return Map(zeroOrMore, func(match []A) ([]A, bool) {
+		if len(match) == 0 {
+			// Allow return nil
+			return nil, false
+		}
+		return match, true
+	})
+}
+
+func NewZeroOrMoreParser[A any](p Parser[A]) Parser[[]A] {
+	return Parser[[]A]{
+		parse: func(s string) (result []A, substring string, found bool, err error) {
+			rest := s
+			matches := make([]A, 0, len(s))
+			for {
+				r, ss, found, _ := p.parse(rest)
+				if !found {
+					break
+				}
+				matches = append(matches, r)
+				rest = ss
+			}
+			return matches, rest, true, nil
+		},
+	}
 }
 
 func NewStringParser(p string) Parser[string] {

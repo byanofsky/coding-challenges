@@ -79,7 +79,6 @@ func TestParseCharacter(t *testing.T) {
 			}
 			if result != tt.result {
 				t.Fatalf("input %q, result %v, want %v", tt.input, result, tt.result)
-
 			}
 			if found != tt.found {
 				t.Fatalf("input %q, found %v, want %v", tt.input, found, tt.found)
@@ -88,6 +87,87 @@ func TestParseCharacter(t *testing.T) {
 				t.Errorf("input %q, after %q, want %q", tt.input, after, tt.after)
 			}
 		})
+	}
+}
 
+func TestParseZeroOrMoreCharacter(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		result []rune
+		found  bool
+		after  string
+	}{{
+		name:   "positive: basic case",
+		input:  "abc",
+		result: []rune{'a', 'b', 'c'},
+		found:  true,
+		after:  "",
+	}, {
+		name:   "positive: zero result match",
+		input:  "",
+		result: []rune{},
+		found:  true,
+		after:  "",
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewZeroOrMoreParser(NewCharacterParser())
+			result, after, found, err := p.parse(tt.input)
+			if err != nil {
+				t.Fatalf("input %q unexpected error: %v", tt.input, err)
+			}
+			if !reflect.DeepEqual(result, tt.result) {
+				t.Fatalf("input %q, result %v, want %v", tt.input, result, tt.result)
+			}
+			if found != tt.found {
+				t.Fatalf("input %q, found %v, want %v", tt.input, found, tt.found)
+			}
+			if after != tt.after {
+				t.Errorf("input %q, after %q, want %q", tt.input, after, tt.after)
+			}
+		})
+	}
+}
+
+func TestParseOneOrMoreCharacter(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		result []rune
+		found  bool
+		after  string
+	}{{
+		name:   "positive: basic case",
+		input:  "abc",
+		result: []rune{'a', 'b', 'c'},
+		found:  true,
+		after:  "",
+	}, {
+		name:   "positive: zero result match",
+		input:  "",
+		result: nil,
+		found:  false,
+		after:  "",
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewOneOrMoreParser(NewCharacterParser())
+			result, after, found, err := p.parse(tt.input)
+			if err != nil {
+				t.Fatalf("input %q unexpected error: %v", tt.input, err)
+			}
+			if !reflect.DeepEqual(result, tt.result) {
+				t.Fatalf("input %q, result %v, want %v", tt.input, result, tt.result)
+			}
+			if found != tt.found {
+				t.Fatalf("input %q, found %v, want %v", tt.input, found, tt.found)
+			}
+			if after != tt.after {
+				t.Errorf("input %q, after %q, want %q", tt.input, after, tt.after)
+			}
+		})
 	}
 }
