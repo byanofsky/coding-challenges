@@ -10,10 +10,6 @@ type Parser[A any] struct {
 	parse func(s string) (result A, substring string, found bool, err error)
 }
 
-// func (p Parser[A]) filter(predicate func()) Parser[A] {
-// 	return Parser[A]{}
-// }
-
 func FlatMap[A any, B any](p Parser[A], transform func(A) Parser[B]) Parser[B] {
 	return Parser[B]{
 		parse: func(s string) (result B, substring string, found bool, err error) {
@@ -34,6 +30,16 @@ func Map[A any, B any](p Parser[A], transform func(A) (b B, found bool)) Parser[
 				return result, s, found, nil
 			},
 		}
+	})
+}
+
+func Filter[A any](p Parser[A], pred func(A) bool) Parser[A] {
+	return Map(p, func(a A) (b A, found bool) {
+		if pred(a) {
+			b = a
+			found = true
+		}
+		return b, found
 	})
 }
 
@@ -90,6 +96,13 @@ func NewCharacterParser() Parser[rune] {
 			return
 		},
 	}
+}
+
+func NewDigitParser() Parser[rune] {
+	p := NewCharacterParser()
+	return Filter(p, func(a rune) bool {
+		return unicode.IsDigit(a)
+	})
 }
 
 type RangeQuantifier struct {

@@ -171,3 +171,51 @@ func TestParseOneOrMoreCharacter(t *testing.T) {
 		})
 	}
 }
+
+func TestIsDigitParser(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		result rune
+		found  bool
+		after  string
+	}{{
+		name:   "positive: basic case",
+		input:  "1bc",
+		result: '1',
+		found:  true,
+		after:  "bc",
+	}, {
+		name:   "negative: not digit",
+		input:  "abc",
+		result: 0,
+		found:  false,
+		// TODO: Should return full string when not found
+		after: "bc",
+	}, {
+		name:   "negative: empty",
+		input:  "",
+		result: 0,
+		found:  false,
+		after:  "",
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewDigitParser()
+			result, after, found, err := p.parse(tt.input)
+			if err != nil {
+				t.Fatalf("input %q unexpected error: %v", tt.input, err)
+			}
+			if result != tt.result {
+				t.Fatalf("input %q, result %v, want %v", tt.input, result, tt.result)
+			}
+			if found != tt.found {
+				t.Fatalf("input %q, found %v, want %v", tt.input, found, tt.found)
+			}
+			if after != tt.after {
+				t.Errorf("input %q, after %q, want %q", tt.input, after, tt.after)
+			}
+		})
+	}
+}
