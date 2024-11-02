@@ -22,6 +22,7 @@ func FlatMap[A any, B any](p Parser[A], transform func(A) Parser[B]) Parser[B] {
 	}
 }
 
+// TODO: Remove found return value
 func Map[A any, B any](p Parser[A], transform func(A) (b B, found bool)) Parser[B] {
 	return FlatMap(p, func(match A) Parser[B] {
 		return Parser[B]{
@@ -118,26 +119,76 @@ func NewNumberParser() Parser[int] {
 	})
 }
 
-type RangeQuantifier struct {
-	lowerBound int
-	upperBound int
+type Zipped[A any, B any] struct {
+	a A
+	b B
 }
 
-func parseNumber(s string) (result int, after string, found bool) {
-	var i int
-	var c rune
-	for i, c = range s {
-		if !unicode.IsDigit(c) {
-			break
-		}
-	}
-	after = s[i:]
+func Zip[A any, B any](ap Parser[A], bp Parser[B]) Parser[Zipped[A, B]] {
+	return FlatMap(ap, func(matchA A) Parser[Zipped[A, B]] {
+		return Map(bp, func(matchB B) (Zipped[A, B], bool) {
+			return Zipped[A, B]{matchA, matchB}, true
+		})
+	})
+}
 
-	result, err := strconv.Atoi(s[0:i])
-	if err != nil {
-		return 0, after, false
-	}
-	return result, after, true
+type Zipped3[A any, B any, C any] struct {
+	a A
+	b B
+	c C
+}
+
+func Zip3[A any, B any, C any](ap Parser[A], bp Parser[B], cp Parser[C]) Parser[Zipped3[A, B, C]] {
+	return Map(Zip(ap, Zip(bp, cp)), func(z Zipped[A, Zipped[B, C]]) (Zipped3[A, B, C], bool) {
+		return Zipped3[A, B, C]{
+			z.a,
+			z.b.a,
+			z.b.b,
+		}, true
+	})
+}
+
+type Zipped4[A any, B any, C any, D any] struct {
+	a A
+	b B
+	c C
+	d D
+}
+
+func Zip4[A any, B any, C any, D any](ap Parser[A], bp Parser[B], cp Parser[C], dp Parser[D]) Parser[Zipped4[A, B, C, D]] {
+	return Map(Zip3(ap, bp, Zip(cp, dp)), func(z Zipped3[A, B, Zipped[C, D]]) (Zipped4[A, B, C, D], bool) {
+		return Zipped4[A, B, C, D]{
+			z.a,
+			z.b,
+			z.c.a,
+			z.c.b,
+		}, true
+	})
+}
+
+type Zipped5[A any, B any, C any, D any, E any] struct {
+	a A
+	b B
+	c C
+	d D
+	e E
+}
+
+func Zip5[A any, B any, C any, D any, E any](ap Parser[A], bp Parser[B], cp Parser[C], dp Parser[D], ep Parser[E]) Parser[Zipped5[A, B, C, D, E]] {
+	return Map(Zip4(ap, bp, cp, Zip(dp, ep)), func(z Zipped4[A, B, C, Zipped[D, E]]) (Zipped5[A, B, C, D, E], bool) {
+		return Zipped5[A, B, C, D, E]{
+			z.a,
+			z.b,
+			z.c,
+			z.d.a,
+			z.d.b,
+		}, true
+	})
+}
+
+type RangeQuantifier struct {
+	LowerBound int
+	UpperBound int
 }
 
 /*
@@ -148,21 +199,9 @@ Returns a tuple of three values:
 
 2 and 3 are returned iff a match is found.
 */
-func parseRangeQuantifier(s string) (match bool, rq *RangeQuantifier, after string) {
-	_, after, found, _ := NewStringParser("{").parse(s)
-	if !found {
-		return false, nil, s
-	}
-
-	lowerBound, after, found := parseNumber(after)
-	if !found {
-		return false, nil, s
-	}
-
-	_, after, found, _ = NewStringParser("}").parse(after)
-	if !found {
-		return false, nil, s
-	}
-
-	return true, &RangeQuantifier{lowerBound: lowerBound, upperBound: 0}, after
+func NewRangeQuantifier() Parser[RangeQuantifier] {
+	p := Zip5(NewStringParser("{"), NewNumberParser(), NewStringParser(","), NewNumberParser(), NewStringParser("}"))
+	return Map(p, func(z Zipped5[string, int, string, int, string]) (RangeQuantifier, bool) {
+		return RangeQuantifier{LowerBound: z.b, UpperBound: z.d}, true
+	})
 }

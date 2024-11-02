@@ -7,39 +7,42 @@ import (
 
 func TestParseRangeQuantifier(t *testing.T) {
 	tests := []struct {
-		name  string
-		input string
-		match bool
-		rq    *RangeQuantifier
-		after string
+		name   string
+		input  string
+		result RangeQuantifier
+		found  bool
+		after  string
 	}{{
-		name:  "positive: basic case",
-		input: "{3}",
-		match: true,
-		rq:    &RangeQuantifier{lowerBound: 3, upperBound: 0},
-		after: "",
+		name:   "positive: basic case",
+		input:  "{3,5}",
+		result: RangeQuantifier{LowerBound: 3, UpperBound: 5},
+		found:  true,
+		after:  "",
 	}, {
-		name:  "negative: no braces case",
-		input: "3",
-		match: false,
-		rq:    nil,
-		after: "3",
+		name:   "negative: no braces case",
+		input:  "3",
+		result: RangeQuantifier{LowerBound: 0, UpperBound: 0},
+		found:  false,
+		after:  "",
 	}, {
-		name:  "negative: no number",
-		input: "{abc}",
-		match: false,
-		rq:    nil,
-		after: "{abc}",
+		name:   "negative: no number",
+		input:  "{abc}",
+		result: RangeQuantifier{LowerBound: 0, UpperBound: 0},
+		found:  false,
+		after:  "",
 	}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			match, rq, after := parseRangeQuantifier(tt.input)
-			if match != tt.match {
-				t.Fatalf("input %q, match %v, want %v", tt.input, match, tt.match)
+			result, after, found, err := NewRangeQuantifier().parse(tt.input)
+			if err != nil {
+				t.Fatalf("input %q unexpected error: %v", tt.input, err)
 			}
-			if !reflect.DeepEqual(rq, tt.rq) {
-				t.Errorf("input %q, rq %v, want %v", tt.input, *rq, *tt.rq)
+			if !reflect.DeepEqual(result, tt.result) {
+				t.Fatalf("input %q, result %v, want %v", tt.input, result, tt.result)
+			}
+			if found != tt.found {
+				t.Fatalf("input %q, found %v, want %v", tt.input, found, tt.found)
 			}
 			if after != tt.after {
 				t.Errorf("input %q, after %q, want %q", tt.input, after, tt.after)
