@@ -172,7 +172,7 @@ func TestParseOneOrMoreCharacter(t *testing.T) {
 	}
 }
 
-func TestIsDigitParser(t *testing.T) {
+func TestDigitParser(t *testing.T) {
 	tests := []struct {
 		name   string
 		input  string
@@ -203,6 +203,60 @@ func TestIsDigitParser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := NewDigitParser()
+			result, after, found, err := p.parse(tt.input)
+			if err != nil {
+				t.Fatalf("input %q unexpected error: %v", tt.input, err)
+			}
+			if result != tt.result {
+				t.Fatalf("input %q, result %v, want %v", tt.input, result, tt.result)
+			}
+			if found != tt.found {
+				t.Fatalf("input %q, found %v, want %v", tt.input, found, tt.found)
+			}
+			if after != tt.after {
+				t.Errorf("input %q, after %q, want %q", tt.input, after, tt.after)
+			}
+		})
+	}
+}
+
+func TestNumberParser(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		result int
+		found  bool
+		after  string
+	}{{
+		name:   "positive: basic case",
+		input:  "123",
+		result: 123,
+		found:  true,
+		after:  "",
+	}, {
+		name:   "positive: with after",
+		input:  "123abc",
+		result: 123,
+		found:  true,
+		after:  "abc",
+	}, {
+		name:   "negative: not number",
+		input:  "abc",
+		result: 0,
+		found:  false,
+		// TODO: Should return full string when not found
+		after: "",
+	}, {
+		name:   "negative: empty",
+		input:  "",
+		result: 0,
+		found:  false,
+		after:  "",
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewNumberParser()
 			result, after, found, err := p.parse(tt.input)
 			if err != nil {
 				t.Fatalf("input %q unexpected error: %v", tt.input, err)

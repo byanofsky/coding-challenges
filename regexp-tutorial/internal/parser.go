@@ -105,6 +105,19 @@ func NewDigitParser() Parser[rune] {
 	})
 }
 
+func NewNumberParser() Parser[int] {
+	p := NewDigitParser()
+	q := NewOneOrMoreParser(p)
+	return Map(q, func(a []rune) (b int, found bool) {
+		s := string(a)
+		n, err := strconv.Atoi(s)
+		if err != nil {
+			return n, false
+		}
+		return n, true
+	})
+}
+
 type RangeQuantifier struct {
 	lowerBound int
 	upperBound int
