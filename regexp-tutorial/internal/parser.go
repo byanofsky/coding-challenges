@@ -186,6 +186,23 @@ func Zip5[A any, B any, C any, D any, E any](ap Parser[A], bp Parser[B], cp Pars
 	})
 }
 
+type OptionalVal[A any] struct {
+	none  bool
+	value A
+}
+
+func Optional[A any](p Parser[A]) Parser[OptionalVal[A]] {
+	return Parser[OptionalVal[A]]{
+		parse: func(s string) (result OptionalVal[A], substring string, found bool, err error) {
+			r, substring, f, _ := p.parse(s)
+			if !f {
+				return OptionalVal[A]{none: true}, s, true, nil
+			}
+			return OptionalVal[A]{none: false, value: r}, substring, true, nil
+		},
+	}
+}
+
 type RangeQuantifier struct {
 	LowerBound int
 	UpperBound int
@@ -200,8 +217,13 @@ Returns a tuple of three values:
 2 and 3 are returned iff a match is found.
 */
 func NewRangeQuantifier() Parser[RangeQuantifier] {
-	p := Zip5(NewStringParser("{"), NewNumberParser(), NewStringParser(","), NewNumberParser(), NewStringParser("}"))
-	return Map(p, func(z Zipped5[string, int, string, int, string]) (RangeQuantifier, bool) {
-		return RangeQuantifier{LowerBound: z.b, UpperBound: z.d}, true
+	p := Zip5(NewStringParser("{"), NewNumberParser(), NewStringParser(","), Optional(NewNumberParser()), NewStringParser("}"))
+	return Map(p, func(z Zipped5[string, int, string, OptionalVal[int], string]) (RangeQuantifier, bool) {
+		upperOptional := z.d
+		upper := 0
+		if !upperOptional.none {
+			upper = upperOptional.value
+		}
+		return RangeQuantifier{LowerBound: z.b, UpperBound: upper}, true
 	})
 }
