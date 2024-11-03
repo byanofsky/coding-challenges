@@ -294,3 +294,18 @@ func TestNumberParser(t *testing.T) {
 		})
 	}
 }
+
+func TestOrThrowParser(t *testing.T) {
+	t.Run("test OrThrow parser panics", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("Expected function to panic, but it did not")
+			} else if r != "expected number" {
+				t.Errorf("Expect 'expected number', got '%v'", r)
+			}
+		}()
+
+		p := OrThrow(NewNumberParser(), "expected number")
+		p.parse("abc")
+	})
+}

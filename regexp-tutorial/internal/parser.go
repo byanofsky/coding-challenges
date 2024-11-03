@@ -226,6 +226,19 @@ func Optional[A any](p Parser[A]) Parser[OptionalVal[A]] {
 	}
 }
 
+func OrThrow[A any](p Parser[A], message string) Parser[A] {
+	return Parser[A]{
+		parse: func(s string) (result A, substring string, found bool, err error) {
+			result, substring, found, err = p.parse(s)
+			if !found {
+				// TODO: Consider if should be error instead
+				panic(message)
+			}
+			return
+		},
+	}
+}
+
 type RangeQuantifier struct {
 	LowerBound int
 	UpperBound OptionalVal[int]
