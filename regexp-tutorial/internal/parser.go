@@ -191,6 +191,29 @@ type OptionalVal[A any] struct {
 	value A
 }
 
+func NewOptionalVal[A any](value A) OptionalVal[A] {
+	return OptionalVal[A]{none: false, value: value}
+}
+
+func NewEmptyOptionalVal[A any]() OptionalVal[A] {
+	return OptionalVal[A]{none: true}
+}
+
+func (o OptionalVal[A]) SafeGet() (value A, ok bool) {
+	if o.none {
+		return value, false
+	}
+	return o.value, true
+}
+
+func OptionalValFlatMap[A any, B any](o OptionalVal[A], transform func(a A) OptionalVal[B]) OptionalVal[B] {
+	value, ok := o.SafeGet()
+	if !ok {
+		return NewEmptyOptionalVal[B]()
+	}
+	return transform(value)
+}
+
 func Optional[A any](p Parser[A]) Parser[OptionalVal[A]] {
 	return Parser[OptionalVal[A]]{
 		parse: func(s string) (result OptionalVal[A], substring string, found bool, err error) {
@@ -205,8 +228,7 @@ func Optional[A any](p Parser[A]) Parser[OptionalVal[A]] {
 
 type RangeQuantifier struct {
 	LowerBound int
-	HasUpper   bool
-	UpperBound int
+	UpperBound OptionalVal[int]
 }
 
 /*
@@ -222,24 +244,17 @@ func NewRangeQuantifier() Parser[RangeQuantifier] {
 	p := Zip4(NewStringParser("{"), NewNumberParser(), o, NewStringParser("}"))
 	return Map(p, func(z Zipped4[string, int, OptionalVal[Zipped[string, OptionalVal[int]]], string]) (RangeQuantifier, bool) {
 		lowerBound := z.b
-		upperOptional := z.c
+		var upperBound OptionalVal[int]
 
-		upperBound := 0
-		hasUpper := false
-
-		// No upper bound means exactly n times
-		if upperOptional.none {
-			hasUpper = true
-			upperBound = lowerBound
+		// Exact match. ie: {3}
+		if z.c.none {
+			upperBound = NewOptionalVal(lowerBound)
 		} else {
-			if upperOptional.value.b.none {
-				hasUpper = false
-			} else {
-				hasUpper = true
-				upperBound = upperOptional.value.b.value
-			}
+			upperBound = OptionalValFlatMap(z.c, func(v Zipped[string, OptionalVal[int]]) OptionalVal[int] {
+				return v.b
+			})
 		}
 
-		return RangeQuantifier{LowerBound: lowerBound, UpperBound: upperBound, HasUpper: hasUpper}, true
+		return RangeQuantifier{LowerBound: lowerBound, UpperBound: upperBound}, true
 	})
 }
