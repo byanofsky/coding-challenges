@@ -15,31 +15,37 @@ func TestParseRangeQuantifier(t *testing.T) {
 	}{{
 		name:   "positive: basic case",
 		input:  "{3,5}",
-		result: RangeQuantifier{LowerBound: 3, UpperBound: 5},
+		result: RangeQuantifier{LowerBound: 3, UpperBound: 5, HasUpper: true},
 		found:  true,
 		after:  "",
 	}, {
 		name:   "positive: optional",
 		input:  "{3,}",
-		result: RangeQuantifier{LowerBound: 3, UpperBound: 0},
+		result: RangeQuantifier{LowerBound: 3, UpperBound: 0, HasUpper: false},
+		found:  true,
+		after:  "",
+	}, {
+		name:   "positive: exact match",
+		input:  "{3}",
+		result: RangeQuantifier{LowerBound: 3, UpperBound: 3, HasUpper: true},
 		found:  true,
 		after:  "",
 	}, {
 		name:   "negative: not range quantifier",
 		input:  "3",
-		result: RangeQuantifier{LowerBound: 0, UpperBound: 0},
+		result: RangeQuantifier{LowerBound: 0, UpperBound: 0, HasUpper: false},
 		found:  false,
 		after:  "",
 	}, {
 		name:   "negative: no number",
 		input:  "{abc}",
-		result: RangeQuantifier{LowerBound: 0, UpperBound: 0},
+		result: RangeQuantifier{LowerBound: 0, UpperBound: 0, HasUpper: false},
 		found:  false,
 		after:  "",
 	}, {
 		name:   "negative: no brace",
 		input:  "{3,",
-		result: RangeQuantifier{LowerBound: 0, UpperBound: 0},
+		result: RangeQuantifier{LowerBound: 0, UpperBound: 0, HasUpper: false},
 		found:  false,
 		after:  "",
 	}}
