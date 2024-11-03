@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"unicode"
@@ -76,7 +77,7 @@ func NewZeroOrMoreParser[A any](p Parser[A]) Parser[[]A] {
 func NewStringParser(p string) Parser[string] {
 	return Parser[string]{
 		parse: func(s string) (result string, substring string, found bool, err error) {
-			result = s
+			result = p
 			substring, found = strings.CutPrefix(s, p)
 			return
 		},
@@ -239,22 +240,58 @@ func OrThrow[A any](p Parser[A], message string) Parser[A] {
 	}
 }
 
-func OneOf[A any](parsers ...Parser[A]) Parser[A] {
+type MatchResultKind string
+
+const (
+	MatchResultString MatchResultKind = "MatchResultString"
+	MatchResultNumber MatchResultKind = "MatchResultNumber"
+)
+
+type MatchResult struct {
+	kind MatchResultKind
+	n    int
+	s    string
+	rq   RangeQuantifier
+}
+
+func OneOf(parsers ...Parser[MatchResult]) Parser[MatchResult] {
 	if len(parsers) == 0 {
 		panic("OneOf requires at least one parser")
 	}
-	return Parser[A]{
-		parse: func(s string) (result A, substring string, found bool, err error) {
+	return Parser[MatchResult]{
+		parse: func(s string) (result MatchResult, substring string, found bool, err error) {
 			for _, p := range parsers {
 				result, substring, found, err = p.parse(s)
 				if found {
 					return
 				}
 			}
-			var empty A
+			var empty MatchResult
 			return empty, s, false, nil
 		},
 	}
+}
+
+func WrapStringParser(p Parser[string]) Parser[MatchResult] {
+	return Map(p, func(match string) (result MatchResult, found bool) {
+		return MatchResult{kind: MatchResultString, s: match}, true
+	})
+}
+
+// Wrap is a generic function that handles both string and int types
+func Wrap[A any](p Parser[A]) Parser[MatchResult] {
+	return Map(p, func(match A) (result MatchResult, found bool) {
+		// Use type assertions to determine the underlying type
+		switch v := any(match).(type) {
+		case string:
+			return MatchResult{kind: MatchResultString, s: v}, true
+		case int:
+			return MatchResult{kind: MatchResultNumber, n: v}, true
+		default:
+			// This should never happen due to type constraint
+			panic(fmt.Sprintf("unsupported type: %T", match))
+		}
+	})
 }
 
 type RangeQuantifier struct {

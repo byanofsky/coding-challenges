@@ -314,26 +314,32 @@ func TestOneOf(t *testing.T) {
 	tests := []struct {
 		name   string
 		input  string
-		result string
+		result MatchResult
 		found  bool
 		after  string
 	}{{
-		name:   "positive: basic case",
-		input:  "b",
-		result: "b",
+		name:   "positive: match first parser",
+		input:  "abc",
+		result: MatchResult{kind: MatchResultString, s: "a"},
+		found:  true,
+		after:  "bc",
+	}, {
+		name:   "positive: match second parser",
+		input:  "123",
+		result: MatchResult{kind: MatchResultNumber, n: 123},
 		found:  true,
 		after:  "",
 	}, {
 		name:   "negative: no match",
-		input:  "c",
-		result: "",
+		input:  "()",
+		result: MatchResult{},
 		found:  false,
-		after:  "c",
+		after:  "()",
 	}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := OneOf(NewStringParser("a"), NewStringParser("b"))
+			p := OneOf(Wrap(NewStringParser("a")), Wrap(NewNumberParser()))
 			result, after, found, err := p.parse(tt.input)
 			if err != nil {
 				t.Fatalf("input %q unexpected error: %v", tt.input, err)
