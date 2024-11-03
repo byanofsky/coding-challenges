@@ -76,7 +76,7 @@ func NewZeroOrMoreParser[A any](p Parser[A]) Parser[[]A] {
 func NewStringParser(p string) Parser[string] {
 	return Parser[string]{
 		parse: func(s string) (result string, substring string, found bool, err error) {
-			result = ""
+			result = s
 			substring, found = strings.CutPrefix(s, p)
 			return
 		},
@@ -235,6 +235,24 @@ func OrThrow[A any](p Parser[A], message string) Parser[A] {
 				panic(message)
 			}
 			return
+		},
+	}
+}
+
+func OneOf[A any](parsers ...Parser[A]) Parser[A] {
+	if len(parsers) == 0 {
+		panic("OneOf requires at least one parser")
+	}
+	return Parser[A]{
+		parse: func(s string) (result A, substring string, found bool, err error) {
+			for _, p := range parsers {
+				result, substring, found, err = p.parse(s)
+				if found {
+					return
+				}
+			}
+			var empty A
+			return empty, s, false, nil
 		},
 	}
 }
