@@ -356,3 +356,42 @@ func TestOneOf(t *testing.T) {
 		})
 	}
 }
+
+func TestExpression(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		result Expression
+		found  bool
+		after  string
+	}{{
+		name:  "positive:",
+		input: "ab12",
+		result: Expression{matches: []MatchResult{
+			{kind: MatchResultRune, r: 'a'},
+			{kind: MatchResultRune, r: 'b'},
+			{kind: MatchResultNumber, n: 12},
+		}},
+		found: true,
+		after: "",
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewExpression()
+			result, after, found, err := p.parse(tt.input)
+			if err != nil {
+				t.Fatalf("input %q unexpected error: %v", tt.input, err)
+			}
+			if !reflect.DeepEqual(result, tt.result) {
+				t.Fatalf("input %q, result %v, want %v", tt.input, result, tt.result)
+			}
+			if found != tt.found {
+				t.Fatalf("input %q, found %v, want %v", tt.input, found, tt.found)
+			}
+			if after != tt.after {
+				t.Errorf("input %q, after %q, want %q", tt.input, after, tt.after)
+			}
+		})
+	}
+}

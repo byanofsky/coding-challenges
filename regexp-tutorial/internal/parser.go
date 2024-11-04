@@ -245,6 +245,7 @@ type MatchResultKind string
 const (
 	MatchResultString MatchResultKind = "MatchResultString"
 	MatchResultNumber MatchResultKind = "MatchResultNumber"
+	MatchResultRune   MatchResultKind = "MatchResultRune"
 )
 
 type MatchResult struct {
@@ -252,6 +253,7 @@ type MatchResult struct {
 	n    int
 	s    string
 	rq   RangeQuantifier
+	r    rune
 }
 
 func OneOf(parsers ...Parser[MatchResult]) Parser[MatchResult] {
@@ -287,6 +289,8 @@ func Wrap[A any](p Parser[A]) Parser[MatchResult] {
 			return MatchResult{kind: MatchResultString, s: v}, true
 		case int:
 			return MatchResult{kind: MatchResultNumber, n: v}, true
+		case rune:
+			return MatchResult{kind: MatchResultRune, r: v}, true
 		default:
 			// This should never happen due to type constraint
 			panic(fmt.Sprintf("unsupported type: %T", match))
@@ -326,3 +330,35 @@ func NewRangeQuantifier() Parser[RangeQuantifier] {
 		return RangeQuantifier{LowerBound: lowerBound, UpperBound: upperBound}, true
 	})
 }
+
+type Expression struct {
+	matches []MatchResult
+}
+
+func NewExpression() Parser[Expression] {
+	p := NewZeroOrMoreParser(OneOf(Wrap(NewNumberParser()), Wrap(NewCharacterParser())))
+	return Map(p, func(matches []MatchResult) (Expression, bool) {
+		return Expression{matches: matches}, true
+	})
+}
+
+// type Group struct {
+// 	nonCapturing bool
+// 	expression   Expression
+// }
+
+// func NewGroup() Parser[Group] {
+// 	p := Zip4(NewStringParser("("), Optional(NewStringParser("?:")), NewExpression(), NewStringParser(")"))
+// 	p = OrThrow(p, "unmatched opening parantheses")
+// 	return Map(p, func(z Zipped4[string, OptionalVal[string], Expression, string]) (g Group, found bool) {
+// 		group := Group{}
+
+// 		nonCapturingModifier := z.b
+// 		group.nonCapturing = !nonCapturingModifier.none
+
+// 		expression := z.c
+// 		group.expression = expression
+
+// 		return group, true
+// 	})
+// }
