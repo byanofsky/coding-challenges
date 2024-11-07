@@ -33,3 +33,18 @@ func TestSerializeString(t *testing.T) {
 		t.Fatalf("input %v, want %v, got %v", input, want, got)
 	}
 }
+
+func TestSerializeInt(t *testing.T) {
+	input := 5
+	want := ":5\r\n"
+
+	got, err := Serialize(input)
+
+	if err != nil {
+		t.Fatalf("input %v, unexpected error: %v", input, err)
+	}
+
+	if got != want {
+		t.Fatalf("input %v, want %v, got %v", input, want, got)
+	}
+}

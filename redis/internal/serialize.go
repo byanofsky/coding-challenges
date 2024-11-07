@@ -17,6 +17,9 @@ func Serialize[T Serializable](data T) (string, error) {
 	case string:
 		s := any(data).(string)
 		return serializeString(s), nil
+	case int:
+		i := any(data).(int)
+		return serializeInt(i), nil
 	default:
 		return "", fmt.Errorf("error unexpected data type: %v", t)
 	}
@@ -28,4 +31,8 @@ func serializeNull() string {
 
 func serializeString(s string) string {
 	return fmt.Sprintf("+%s\r\n", s)
+}
+
+func serializeInt(i int) string {
+	return fmt.Sprintf(":%d\r\n", i)
 }
