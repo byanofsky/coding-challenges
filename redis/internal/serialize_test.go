@@ -4,47 +4,22 @@ import (
 	"testing"
 )
 
-func TestSerializeNull(t *testing.T) {
-	input := Null{}
-	want := "$-1\r\n"
-
-	got, err := Serialize(input)
-
-	if err != nil {
-		t.Fatalf("input %v, unexpected error: %v", input, err)
-	}
-
-	if got != want {
-		t.Fatalf("input %v, want %v, got %v", input, want, got)
-	}
+func TestSerialize(t *testing.T) {
+	runSerializeTest(t, "Null", Null{}, "$-1\r\n")
+	runSerializeTest(t, "String", "OK", "+OK\r\n")
+	runSerializeTest(t, "Int", 5, ":5\r\n")
 }
 
-func TestSerializeString(t *testing.T) {
-	input := "OK"
-	want := "+OK\r\n"
+func runSerializeTest[T Serializable](t *testing.T, name string, input T, want string) {
+	t.Run(name, func(t *testing.T) {
+		got, err := Serialize(input)
 
-	got, err := Serialize(input)
+		if err != nil {
+			t.Fatalf("input %v, unexpected error: %v", input, err)
+		}
 
-	if err != nil {
-		t.Fatalf("input %v, unexpected error: %v", input, err)
-	}
-
-	if got != want {
-		t.Fatalf("input %v, want %v, got %v", input, want, got)
-	}
-}
-
-func TestSerializeInt(t *testing.T) {
-	input := 5
-	want := ":5\r\n"
-
-	got, err := Serialize(input)
-
-	if err != nil {
-		t.Fatalf("input %v, unexpected error: %v", input, err)
-	}
-
-	if got != want {
-		t.Fatalf("input %v, want %v, got %v", input, want, got)
-	}
+		if got != want {
+			t.Fatalf("input %v, want %v, got %v", input, want, got)
+		}
+	})
 }
