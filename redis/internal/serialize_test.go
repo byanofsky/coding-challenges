@@ -31,7 +31,7 @@ func TestSerialize(t *testing.T) {
 			{kind: BulkStringKind, value: "get"},
 			{kind: BulkStringKind, value: "key"},
 		}}, "*2\r\n$3\r\nget\r\n$3\r\nkey\r\n")
-	// runSerializeTest(t, "", "", "-Error message\r\n")
+	runSerializeTest(t, "SimpleError", Data{kind: SimpleErrorKind, value: "Error message"}, "-Error message\r\n")
 }
 
 func runSerializeTest(t *testing.T, name string, input Data, want string) {

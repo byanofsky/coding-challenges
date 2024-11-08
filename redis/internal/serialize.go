@@ -12,6 +12,7 @@ const (
 	BulkStringKind
 	IntKind
 	ArrayKind
+	SimpleErrorKind
 )
 
 func (k Kind) String() string {
@@ -26,6 +27,8 @@ func (k Kind) String() string {
 		return "Int"
 	case ArrayKind:
 		return "Array"
+	case SimpleErrorKind:
+		return "SimpleError"
 	default:
 		return "Unknown"
 	}
@@ -48,13 +51,15 @@ func (d Data) String() string {
 		return fmt.Sprintf("Data{%d}", d.value)
 	case ArrayKind:
 		return fmt.Sprintf("Data{%v}", d.value)
+	case SimpleErrorKind:
+		return fmt.Sprintf("Data{Error: %q}", d.value)
 	default:
 		return "Unknown"
 	}
 }
 
 func (d Data) GetString() (string, error) {
-	if !(d.kind == SimpleStringKind || d.kind == BulkStringKind) {
+	if !(d.kind == SimpleStringKind || d.kind == BulkStringKind || d.kind == SimpleErrorKind) {
 		return "", fmt.Errorf("cannot GetString of kind: %s", d.kind)
 	}
 	s, ok := d.value.(string)
@@ -98,6 +103,8 @@ func Serialize(data Data) (string, error) {
 		return serializeBulkString(data)
 	case IntKind:
 		return serializeInt(data)
+	case SimpleErrorKind:
+		return serializeSimpleError(data)
 	default:
 		return "", fmt.Errorf("error unexpected data type: %v", data.kind)
 	}
@@ -151,4 +158,12 @@ func serializeArray(d Data) (string, error) {
 	}
 
 	return result, nil
+}
+
+func serializeSimpleError(d Data) (string, error) {
+	s, err := d.GetString()
+	if err != nil {
+		return "", fmt.Errorf("error serializing simple string: %w", err)
+	}
+	return fmt.Sprintf("-%s\r\n", s), nil
 }
