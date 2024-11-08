@@ -8,7 +8,8 @@ type Kind int
 
 const (
 	NullKind Kind = iota
-	StringKind
+	SimpleStringKind
+	BulkStringKind
 	IntKind
 	ArrayKind
 )
@@ -17,8 +18,10 @@ func (k Kind) String() string {
 	switch k {
 	case NullKind:
 		return "Null"
-	case StringKind:
-		return "String"
+	case SimpleStringKind:
+		return "SimpleString"
+	case BulkStringKind:
+		return "BulkString"
 	case IntKind:
 		return "Int"
 	case ArrayKind:
@@ -37,7 +40,9 @@ func (d Data) String() string {
 	switch d.kind {
 	case NullKind:
 		return "Data{Null}"
-	case StringKind:
+	case SimpleStringKind:
+		return fmt.Sprintf("Data{%q}", d.value)
+	case BulkStringKind:
 		return fmt.Sprintf("Data{%q}", d.value)
 	case IntKind:
 		return fmt.Sprintf("Data{%d}", d.value)
@@ -49,7 +54,7 @@ func (d Data) String() string {
 }
 
 func (d Data) GetString() (string, error) {
-	if d.kind != StringKind {
+	if !(d.kind == SimpleStringKind || d.kind == BulkStringKind) {
 		return "", fmt.Errorf("cannot GetString of kind: %s", d.kind)
 	}
 	s, ok := d.value.(string)
@@ -87,8 +92,10 @@ func Serialize(data Data) (string, error) {
 		return serializeArray(data)
 	case NullKind:
 		return serializeNull(), nil
-	case StringKind:
-		return serializeString(data)
+	case SimpleStringKind:
+		return serializeSimpleString(data)
+	case BulkStringKind:
+		return serializeBulkString(data)
 	case IntKind:
 		return serializeInt(data)
 	default:
@@ -100,13 +107,23 @@ func serializeNull() string {
 	return "$-1\r\n"
 }
 
-func serializeString(d Data) (string, error) {
+func serializeSimpleString(d Data) (string, error) {
+	// TODO: Simple string validation
 	s, err := d.GetString()
 	if err != nil {
-		return "", fmt.Errorf("error serializing string: %w", err)
+		return "", fmt.Errorf("error serializing simple string: %w", err)
 	}
 	// TODO: The string mustn't contain a CR (\r) or LF (\n) character and is terminated by CRLF (i.e., \r\n).
 	return fmt.Sprintf("+%s\r\n", s), nil
+}
+
+func serializeBulkString(d Data) (string, error) {
+	s, err := d.GetString()
+	if err != nil {
+		return "", fmt.Errorf("error serializing bulk string: %w", err)
+	}
+	l := len([]rune(s))
+	return fmt.Sprintf("$%d\r\n%s\r\n", l, s), nil
 }
 
 func serializeInt(d Data) (string, error) {
