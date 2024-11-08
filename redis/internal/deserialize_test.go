@@ -7,8 +7,8 @@ import (
 
 func TestDeserialize(t *testing.T) {
 	runDeserializeTest(t, "Null", "$-1\r\n", Data{kind: NullKind})
-	// runSerializeTest(t, "SimpleString1", Data{kind: SimpleStringKind, value: "OK"}, "+OK\r\n")
-	// runSerializeTest(t, "SimpleString2", Data{kind: SimpleStringKind, value: "hello world"}, "+hello world\r\n")
+	runDeserializeTest(t, "SimpleString1", "+OK\r\n", Data{kind: SimpleStringKind, value: "OK"})
+	runDeserializeTest(t, "SimpleString2", "+hello world\r\n", Data{kind: SimpleStringKind, value: "hello world"})
 	// // runSerializeTest(t, "SimpleStringInvalid1", Data{kind: StringKind, value: "hello\rworld"}, "+hello world\r\n")
 	// // runSerializeTest(t, "SimpleStringInvalid2", Data{kind: StringKind, value: "hello\nworld"}, "+hello world\r\n")
 	// runSerializeTest(t, "Int", Data{kind: IntKind, value: 5}, ":5\r\n")
@@ -44,7 +44,7 @@ func runDeserializeTest(t *testing.T, name string, input string, want Data) {
 		}
 
 		if !reflect.DeepEqual(*got, want) {
-			t.Fatalf("input %v, want %q, got %q", input, want, got)
+			t.Fatalf("input %q, want %v, got %v", input, want, got)
 		}
 	})
 }
