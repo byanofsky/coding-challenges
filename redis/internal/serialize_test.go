@@ -14,9 +14,23 @@ func TestSerialize(t *testing.T) {
 	runSerializeTest(t, "Array SimpleString", Data{kind: ArrayKind, value: []Data{{kind: SimpleStringKind, value: "ping"}}}, "*1\r\n+ping\r\n")
 	runSerializeTest(t, "BulkStringEmpty", Data{kind: BulkStringKind, value: ""}, "$0\r\n\r\n")
 	runSerializeTest(t, "BulkString1", Data{kind: BulkStringKind, value: "hello world"}, "$11\r\nhello world\r\n")
-	// runSerializeTest(t, "Array", []any{"ping"}, "*1\r\n$4\r\nping\r\n")
-	// runSerializeTest(t, "", "", "*2\r\n$4\r\necho\r\n$11\r\nhello world\r\n")
-	// runSerializeTest(t, "", "", "*2\r\n$3\r\nget\r\n$3\r\nkey\r\n")
+	runSerializeTest(t, "Array BulkString1", Data{
+		kind:  ArrayKind,
+		value: []Data{{kind: BulkStringKind, value: "ping"}},
+	}, "*1\r\n$4\r\nping\r\n")
+	runSerializeTest(t, "Array BulkString2", Data{
+		kind: ArrayKind,
+		value: []Data{
+			{kind: BulkStringKind, value: "echo"},
+			{kind: BulkStringKind, value: "hello world"},
+		},
+	}, "*2\r\n$4\r\necho\r\n$11\r\nhello world\r\n")
+	runSerializeTest(t, "Array BulkString3", Data{
+		kind: ArrayKind,
+		value: []Data{
+			{kind: BulkStringKind, value: "get"},
+			{kind: BulkStringKind, value: "key"},
+		}}, "*2\r\n$3\r\nget\r\n$3\r\nkey\r\n")
 	// runSerializeTest(t, "", "", "-Error message\r\n")
 }
 
