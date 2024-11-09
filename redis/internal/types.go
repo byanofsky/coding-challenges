@@ -98,6 +98,10 @@ func NewSimpleStringData(s string) *Data {
 	return &Data{kind: SimpleStringKind, value: s}
 }
 
+func NewArrayData(a []Data) *Data {
+	return &Data{kind: ArrayKind, value: a}
+}
+
 func NewSimpleError(e string) *Data {
 	return &Data{kind: SimpleErrorKind, value: e}
 }

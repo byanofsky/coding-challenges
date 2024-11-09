@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	ln, err := net.Listen("tcp", ":6379")
+	ln, err := net.Listen("tcp", "localhost:6379")
 	if err != nil {
 		log.Fatalf("error startup: %v", err)
 	}
@@ -54,14 +54,50 @@ func handleConnection(conn net.Conn) {
 func handleRequest(request *internal.Data, conn net.Conn) {
 	switch request.GetKind() {
 	case internal.ArrayKind:
-		response, err := internal.Serialize(*internal.NewSimpleStringData("PONG"))
+		command, err := request.GetArray()
 		if err != nil {
-			log.Printf("error serializing: %v", err)
+			// TODO: Return error
+			log.Printf("error getting array: %v", err)
+			return
 		}
-		sendResponse(response, conn)
+
+		handleCommand(conn, command[0], command[1:])
 	default:
 		log.Printf("error unhandled kind: %s", request.GetKind())
 		respondError(conn)
+	}
+}
+
+func handleCommand(conn net.Conn, commandData internal.Data, args []internal.Data) {
+	command, err := commandData.GetString()
+	if err != nil {
+		log.Printf("error command should be simple string: %v", command)
+
+	}
+	switch command {
+	case "PING":
+		response, err := internal.Serialize(*internal.NewSimpleStringData("PONG"))
+		if err != nil {
+			log.Printf("error serializing: %v", err)
+			return
+		}
+		sendResponse(response, conn)
+	case "COMMAND":
+		response, err := internal.Serialize(*internal.NewSimpleStringData("CONNECTED"))
+		if err != nil {
+			log.Printf("error serializing: %v", err)
+			return
+		}
+		sendResponse(response, conn)
+	case "ECHO":
+		response, err := internal.Serialize(*internal.NewArrayData(args))
+		if err != nil {
+			log.Printf("error serializing: %v", err)
+			return
+		}
+		sendResponse(response, conn)
+	default:
+		log.Printf("unknown command: %s", command)
 	}
 }
 
