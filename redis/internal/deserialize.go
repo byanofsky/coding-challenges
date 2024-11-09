@@ -6,10 +6,11 @@ import (
 	"strconv"
 )
 
-var BULK_STRING_RE = regexp.MustCompile(`(?s)^(-?\d+)\r\n(.*)`)
-var SIMPLE_STRING_RE = regexp.MustCompile(`^([^\n\r]+)\r\n$`)
-var INT_RE = regexp.MustCompile(`^((?:\+|-)?\d+)\r\n$`)
-var ARRAY_RE = regexp.MustCompile(`(?s)^(\d+)\r\n(.*)`)
+var BULK_STRING_RE = regexp.MustCompile(`(?s)^(-?\d+)\r\n(.*)$`)
+var SIMPLE_STRING_RE = regexp.MustCompile(`^([^\n\r]+)\r\n(.*)$`)
+var INT_RE = regexp.MustCompile(`^((?:\+|-)?\d+)\r\n(.*)$`)
+var ARRAY_RE = regexp.MustCompile(`(?s)^(\d+)\r\n(.*)$`)
+var SIMPLE_ERROR_RE = regexp.MustCompile(`(?s)^([^\n\r]+)\r\n(.*)$`)
 
 func Deserialize(s string) (*Data, error) {
 	d, remaining, err := parseDeserialize(s)
@@ -58,8 +59,9 @@ func deserializeSimpleString(s string) (*Data, string, error) {
 		return nil, "", fmt.Errorf("error simple string format: %q", s)
 	}
 	match := m[1]
+	remaining := m[2]
 
-	return &Data{kind: SimpleStringKind, value: match}, "", nil
+	return &Data{kind: SimpleStringKind, value: match}, remaining, nil
 }
 
 func deserializeInt(s string) (*Data, string, error) {
@@ -68,18 +70,23 @@ func deserializeInt(s string) (*Data, string, error) {
 		return nil, "", fmt.Errorf("error int format: %q", s)
 	}
 	match := m[1]
+	remaining := m[2]
 
 	i, err := strconv.Atoi(match)
 	if err != nil {
 		return nil, "", fmt.Errorf("error converting int %s: %w", m[1], err)
 	}
 
-	return &Data{kind: IntKind, value: i}, "", nil
+	return &Data{kind: IntKind, value: i}, remaining, nil
 }
 
 func deserializeArray(s string) (*Data, string, error) {
 	var remaining string
 	m := ARRAY_RE.FindStringSubmatch(s)
+	if m == nil {
+		return nil, "", fmt.Errorf("error array format: %q", s)
+	}
+
 	length, err := strconv.Atoi(m[1])
 	if err != nil {
 		return nil, remaining, fmt.Errorf("error parsing array length: %w", err)
@@ -100,6 +107,16 @@ func deserializeArray(s string) (*Data, string, error) {
 	return &Data{kind: ArrayKind, value: value}, remaining, nil
 }
 
+func deserializeSimpleError(s string) (*Data, string, error) {
+	m := SIMPLE_ERROR_RE.FindStringSubmatch(s)
+	if m == nil {
+		return nil, "", fmt.Errorf("error simple error format: %q", s)
+	}
+	value := m[1]
+	remaining := m[2]
+	return &Data{kind: SimpleErrorKind, value: value}, remaining, nil
+}
+
 func parseDeserialize(s string) (*Data, string, error) {
 	firstChar := s[0]
 	remaining := s[1:]
@@ -112,6 +129,8 @@ func parseDeserialize(s string) (*Data, string, error) {
 		return deserializeInt(remaining)
 	case '*':
 		return deserializeArray(remaining)
+	case '-':
+		return deserializeSimpleError(remaining)
 	default:
 		return nil, "", fmt.Errorf("error unexpected first char: %q", firstChar)
 	}
