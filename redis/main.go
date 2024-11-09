@@ -38,16 +38,46 @@ func handleConnection(conn net.Conn) {
 		}
 
 		// Process the received data
-		data := buffer[:n]
-		log.Printf("received %d bytes: %q\n", n, string(data))
+		received := string(buffer[:n])
+		log.Printf("received %d bytes: %q\n", n, received)
 
-		d, err := internal.Serialize(*internal.NewSimpleStringData("PONG"))
+		request, err := internal.Deserialize(received)
 		if err != nil {
-			log.Printf("error deserializing: %v", err)
+			log.Printf("error deserializing: %q", received)
+			continue
 		}
-		_, err = conn.Write([]byte(d))
-		if err != nil {
-			log.Printf("error writing: %v", err)
-		}
+
+		handleRequest(request, conn)
 	}
+}
+
+func handleRequest(request *internal.Data, conn net.Conn) {
+	switch request.GetKind() {
+	case internal.ArrayKind:
+		response, err := internal.Serialize(*internal.NewSimpleStringData("PONG"))
+		if err != nil {
+			log.Printf("error serializing: %v", err)
+		}
+		sendResponse(response, conn)
+	default:
+		log.Printf("error unhandled kind: %s", request.GetKind())
+		respondError(conn)
+	}
+}
+
+func respondError(conn net.Conn) {
+	response, err := internal.Serialize(*internal.NewSimpleError("unexpected command"))
+	if err != nil {
+		log.Printf("error serializing: %v", err)
+	}
+	sendResponse(response, conn)
+}
+
+func sendResponse(response string, conn net.Conn) {
+	_, err := conn.Write([]byte(response))
+	// TODO: Return error
+	if err != nil {
+		log.Printf("error writing: %v", err)
+	}
+	log.Printf("write response: %q", response)
 }

@@ -56,6 +56,10 @@ func (d Data) String() string {
 	}
 }
 
+func (d Data) GetKind() Kind {
+	return d.kind
+}
+
 func (d Data) GetString() (string, error) {
 	if !(d.kind == SimpleStringKind || d.kind == BulkStringKind || d.kind == SimpleErrorKind) {
 		return "", fmt.Errorf("cannot GetString of kind: %s", d.kind)
@@ -91,4 +95,8 @@ func (d Data) GetArray() (*[]Data, error) {
 
 func NewSimpleStringData(s string) *Data {
 	return &Data{kind: SimpleStringKind, value: s}
+}
+
+func NewSimpleError(e string) *Data {
+	return &Data{kind: SimpleErrorKind, value: e}
 }
