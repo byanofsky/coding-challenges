@@ -3,10 +3,12 @@ package internal
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 )
 
 var BULK_STRING_LEN = regexp.MustCompile(`^(-?\d+)\r\n`)
 var SIMPLE_STRING_LEN = regexp.MustCompile(`^([^\n\r]+)\r\n`)
+var INT_RE = regexp.MustCompile(`^((?:\+|-)?\d+)\r\n`)
 
 func Deserialize(s string) (*Data, error) {
 	firstChar := s[0]
@@ -16,6 +18,8 @@ func Deserialize(s string) (*Data, error) {
 		return deserializeBulkStringOrNull(remaining)
 	case '+':
 		return deserializeSimpleString(remaining)
+	case ':':
+		return deserializeInt(remaining)
 	default:
 		return nil, fmt.Errorf("error unexpected first char: %v", firstChar)
 	}
@@ -46,4 +50,18 @@ func deserializeSimpleString(s string) (*Data, error) {
 	}
 
 	return &Data{kind: SimpleStringKind, value: m[1]}, nil
+}
+
+func deserializeInt(s string) (*Data, error) {
+	m := INT_RE.FindStringSubmatch(s)
+	if m == nil {
+		return nil, fmt.Errorf("error int format: %q", s)
+	}
+
+	i, err := strconv.Atoi(m[1])
+	if err != nil {
+		return nil, fmt.Errorf("error converting int %s: %w", m[1], err)
+	}
+
+	return &Data{kind: IntKind, value: i}, nil
 }
