@@ -6,8 +6,8 @@ import (
 	"strconv"
 )
 
-var BULK_STRING_LEN = regexp.MustCompile(`^(-?\d+)\r\n$`)
-var SIMPLE_STRING_LEN = regexp.MustCompile(`^([^\n\r]+)\r\n$`)
+var BULK_STRING_RE = regexp.MustCompile(`(?s)^(-?\d+)\r\n(.*)`)
+var SIMPLE_STRING_RE = regexp.MustCompile(`^([^\n\r]+)\r\n$`)
 var INT_RE = regexp.MustCompile(`^((?:\+|-)?\d+)\r\n$`)
 var ARRAY_RE = regexp.MustCompile(`(?s)^(\d+)\r\n(.*)`)
 
@@ -20,25 +20,40 @@ func Deserialize(s string) (*Data, error) {
 }
 
 func deserializeBulkStringOrNull(s string) (*Data, string, error) {
-	m := BULK_STRING_LEN.FindStringSubmatch(s)
+	m := BULK_STRING_RE.FindStringSubmatch(s)
 	if m == nil {
 		return nil, "", fmt.Errorf("error bulk string format: %q", s)
 	}
 
 	// Length
-	l := m[1]
+	l, err := strconv.Atoi(m[1])
+	if err != nil {
+		return nil, "", fmt.Errorf("error parsing length: %q", s)
+	}
+
+	if l < -1 {
+		return nil, "", fmt.Errorf("error invalid length: %d %q", l, s)
+	}
 
 	// Null
-	if l == "-1" {
+	if l == -1 {
 		return &Data{kind: NullKind}, "", nil
 	}
 
-	fmt.Println(m)
-	return nil, "", nil
+	// Bulk String
+	match := m[2]
+	// Bulk string value
+	value := match[0:l]
+	// Should bulk string must end with CRLF
+	if match[l:l+2] != "\r\n" {
+		return nil, "", fmt.Errorf("error bulk string format, should end with CRLF: %q", match[0:l+2])
+	}
+	remaining := match[l+2:]
+	return &Data{kind: BulkStringKind, value: value}, remaining, nil
 }
 
 func deserializeSimpleString(s string) (*Data, string, error) {
-	m := SIMPLE_STRING_LEN.FindStringSubmatch(s)
+	m := SIMPLE_STRING_RE.FindStringSubmatch(s)
 	if m == nil {
 		return nil, "", fmt.Errorf("error simple string format: %q", s)
 	}
