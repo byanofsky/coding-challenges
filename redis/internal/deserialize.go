@@ -5,18 +5,19 @@ import (
 	"regexp"
 )
 
-var BULK_STRING_LEN = regexp.MustCompile(`^\$(-?\d+)\r\n`)
-var SIMPLE_STRING_LEN = regexp.MustCompile(`^\+([^\n\r]+)\r\n`)
+var BULK_STRING_LEN = regexp.MustCompile(`^(-?\d+)\r\n`)
+var SIMPLE_STRING_LEN = regexp.MustCompile(`^([^\n\r]+)\r\n`)
 
 func Deserialize(s string) (*Data, error) {
-	f := s[0]
-	switch f {
+	firstChar := s[0]
+	remaining := s[1:]
+	switch firstChar {
 	case '$':
-		return deserializeBulkStringOrNull(s)
+		return deserializeBulkStringOrNull(remaining)
 	case '+':
-		return deserializeSimpleString(s)
+		return deserializeSimpleString(remaining)
 	default:
-		return nil, fmt.Errorf("error unexpected first char: %v", f)
+		return nil, fmt.Errorf("error unexpected first char: %v", firstChar)
 	}
 }
 
