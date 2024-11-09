@@ -88,3 +88,7 @@ func (d Data) GetArray() (*[]Data, error) {
 	}
 	return &a, nil
 }
+
+func NewSimpleStringData(s string) *Data {
+	return &Data{kind: SimpleStringKind, value: s}
+}
