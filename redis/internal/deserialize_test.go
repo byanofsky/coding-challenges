@@ -14,7 +14,7 @@ func TestDeserialize(t *testing.T) {
 	runDeserializeTest(t, "Int", ":5\r\n", Data{kind: IntKind, value: 5})
 	runDeserializeTest(t, "Int", ":+5\r\n", Data{kind: IntKind, value: 5})
 	runDeserializeTest(t, "Int", ":-5\r\n", Data{kind: IntKind, value: -5})
-	// runSerializeTest(t, "Array SimpleString", Data{kind: ArrayKind, value: []Data{{kind: SimpleStringKind, value: "ping"}}}, "*1\r\n+ping\r\n")
+	runDeserializeTest(t, "Array SimpleString", "*1\r\n+ping\r\n", Data{kind: ArrayKind, value: []*Data{{kind: SimpleStringKind, value: "ping"}}})
 	// runSerializeTest(t, "BulkStringEmpty", Data{kind: BulkStringKind, value: ""}, "$0\r\n\r\n")
 	// runSerializeTest(t, "BulkString1", Data{kind: BulkStringKind, value: "hello world"}, "$11\r\nhello world\r\n")
 	// runSerializeTest(t, "Array BulkString1", Data{
