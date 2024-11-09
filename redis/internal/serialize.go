@@ -60,9 +60,9 @@ func serializeArray(d Data) (string, error) {
 		return "", fmt.Errorf("error serializing array: %w", err)
 	}
 
-	result := fmt.Sprintf("*%d\r\n", len(*a))
+	result := fmt.Sprintf("*%d\r\n", len(a))
 
-	for _, item := range *a {
+	for _, item := range a {
 		s, err := Serialize(item)
 		if err != nil {
 			return "", err

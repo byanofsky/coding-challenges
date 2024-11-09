@@ -92,7 +92,7 @@ func deserializeArray(s string) (*Data, string, error) {
 		return nil, remaining, fmt.Errorf("error parsing array length: %w", err)
 	}
 	remaining = m[2]
-	value := make([]*Data, 0, length)
+	value := make([]Data, 0, length)
 
 	for length > 0 {
 		var element *Data
@@ -100,7 +100,7 @@ func deserializeArray(s string) (*Data, string, error) {
 		if err != nil {
 			return nil, remaining, err
 		}
-		value = append(value, element)
+		value = append(value, *element)
 		length--
 	}
 

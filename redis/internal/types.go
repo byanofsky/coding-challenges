@@ -82,7 +82,8 @@ func (d Data) GetInt() (int, error) {
 	return i, nil
 }
 
-func (d Data) GetArray() (*[]Data, error) {
+// TODO: Return pointer to array of pointers
+func (d Data) GetArray() ([]Data, error) {
 	if d.kind != ArrayKind {
 		return nil, fmt.Errorf("cannot GetArray of kind: %s", d.kind)
 	}
@@ -90,7 +91,7 @@ func (d Data) GetArray() (*[]Data, error) {
 	if !ok {
 		return nil, fmt.Errorf("error value is not an array: %v", d.value)
 	}
-	return &a, nil
+	return a, nil
 }
 
 func NewSimpleStringData(s string) *Data {
