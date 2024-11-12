@@ -32,6 +32,11 @@ type Server struct {
 	shutdownWg sync.WaitGroup
 }
 
+// Dictionary stores key value pairs
+type Dictionary struct {
+	kv map[string]string
+}
+
 // CommandHandler defines the interface for handling commands
 type CommandHandler interface {
 	Handle(ctx context.Context, command string, args []internal.Data) (*internal.Data, error)
@@ -39,6 +44,26 @@ type CommandHandler interface {
 
 // DefaultCommandHandler implements basic command handling
 type DefaultCommandHandler struct {
+	dict Dictionary
+}
+
+// TODO: Return pointer?
+func NewDictionary() Dictionary {
+	return Dictionary{kv: make(map[string]string)}
+}
+
+// TODO: Add mutex
+func (d *Dictionary) Set(k string, v string) {
+	d.kv[k] = v
+}
+
+// TODO: Add mutex
+func (d *Dictionary) Get(k string) (string, error) {
+	value, ok := d.kv[k]
+	if !ok {
+		return value, fmt.Errorf("no value for key %s", k)
+	}
+	return value, nil
 }
 
 // NewServer creates a new server instance
@@ -199,9 +224,51 @@ func (h *DefaultCommandHandler) Handle(ctx context.Context, command string, args
 		return internal.NewArrayData(args), nil
 	case "COMMAND":
 		return internal.NewSimpleStringData("CONNECTED"), nil
+	case "SET":
+		return h.handleSetCommand(args)
+	case "GET":
+		return h.handleGetCommand(args)
 	default:
 		return nil, fmt.Errorf("unknown command: %s", command)
 	}
+}
+
+func (h *DefaultCommandHandler) handleSetCommand(args []internal.Data) (*internal.Data, error) {
+	// Validate input
+	if len(args) != 2 {
+		return nil, fmt.Errorf("invalid set command")
+	}
+
+	key, err := args[0].GetString()
+	if err != nil {
+		return nil, fmt.Errorf("first arg must be string")
+	}
+	// TODO: Relax string requirement
+	value, err := args[1].GetString()
+	if err != nil {
+		return nil, fmt.Errorf("second arg must be string")
+	}
+
+	h.dict.Set(key, value)
+	return internal.NewSimpleStringData("OK"), nil
+}
+
+func (h *DefaultCommandHandler) handleGetCommand(args []internal.Data) (*internal.Data, error) {
+	// Validate input
+	if len(args) != 1 {
+		return nil, fmt.Errorf("invalid get command")
+	}
+
+	key, err := args[0].GetString()
+	if err != nil {
+		return nil, fmt.Errorf("first arg must be string")
+	}
+
+	value, err := h.dict.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	return internal.NewSimpleStringData(value), nil
 }
 
 func main() {
@@ -217,7 +284,7 @@ func main() {
 		Level: slog.LevelInfo,
 	})))
 
-	server := NewServer(config, logger, &DefaultCommandHandler{})
+	server := NewServer(config, logger, &DefaultCommandHandler{dict: NewDictionary()})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
