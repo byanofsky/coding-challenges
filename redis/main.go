@@ -1,119 +1,244 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"myredis/internal"
 	"net"
+	"os"
+	"os/signal"
+	"sync"
+	"time"
 )
 
-func main() {
-	ln, err := net.Listen("tcp", "localhost:6379")
-	if err != nil {
-		log.Fatalf("error startup: %v", err)
+// Server configuration
+type Config struct {
+	Address         string
+	ReadTimeout     time.Duration
+	WriteTimeout    time.Duration
+	MaxMessageSize  int
+	ShutdownTimeout time.Duration
+}
+
+// TCP server
+type Server struct {
+	config     Config
+	listener   net.Listener
+	logger     *slog.Logger
+	handler    CommandHandler
+	shutdownWg sync.WaitGroup
+}
+
+// CommandHandler defines the interface for handling commands
+type CommandHandler interface {
+	Handle(ctx context.Context, command string, args []internal.Data) (*internal.Data, error)
+}
+
+// DefaultCommandHandler implements basic command handling
+type DefaultCommandHandler struct {
+}
+
+// NewServer creates a new server instance
+func NewServer(config Config, logger *slog.Logger, handler CommandHandler) *Server {
+	if logger == nil {
+		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			log.Printf("error accepting conn: %v", err)
-			continue
-		}
-		go handleConnection(conn)
+	return &Server{
+		config:  config,
+		logger:  logger,
+		handler: handler,
 	}
 }
 
-func handleConnection(conn net.Conn) {
+// Start begins listening for connections
+func (s *Server) Start(ctx context.Context) error {
+	var err error
+	s.listener, err = net.Listen("tcp", s.config.Address)
+	if err != nil {
+		return fmt.Errorf("failed to start server: %w", err)
+	}
+
+	s.logger.Info("server started", "address", s.config.Address)
+
+	go s.acceptConnections(ctx)
+	return nil
+}
+
+// Shutdown gracefully stops the server
+func (s *Server) Shutdown(ctx context.Context) error {
+	if err := s.listener.Close(); err != nil {
+		return fmt.Errorf("failed to close listener: %w, err", err)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		s.shutdownWg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-done:
+		return nil
+	}
+}
+
+func (s *Server) acceptConnections(ctx context.Context) {
+	for {
+		conn, err := s.listener.Accept()
+		if err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				return
+			}
+			s.logger.Error("failed to accept connection", "error", err)
+		}
+
+		s.shutdownWg.Add(1)
+		go func() {
+			defer s.shutdownWg.Done()
+			s.handleConnection(ctx, conn)
+		}()
+	}
+}
+
+func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
-	log.Printf("new connection from %s\n", conn.RemoteAddr().String())
 
-	buffer := make([]byte, 1024) // 1KB buffer
+	logger := s.logger.With(
+		"remote_addr", conn.RemoteAddr().String(),
+	)
+	logger.Info("new connection established")
+
 	for {
-		n, err := conn.Read(buffer)
-		if err == io.EOF {
+		// TODO: Investigate whether read deadline is correct appraoch.
+		// If it is, gracefully handle read request after deadline.
+		if err := conn.SetReadDeadline(time.Now().Add(s.config.ReadTimeout)); err != nil {
+			logger.Error("failed to set read deadline", "error", err)
+		}
+
+		request, err := s.readRequest(conn)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return
+			}
+			logger.Error("failed to read request", "error", err)
+			s.sendError(conn, "failed to read request")
 			return
 		}
-		if err != nil {
-			log.Println("error reading:", err)
+
+		if err := s.processRequest(ctx, conn, request); err != nil {
+			logger.Error("failed to process request", "error", err)
+			s.sendError(conn, "internal server error")
 			return
 		}
-
-		// Process the received data
-		received := string(buffer[:n])
-		log.Printf("received %d bytes: %q\n", n, received)
-
-		request, err := internal.Deserialize(received)
-		if err != nil {
-			log.Printf("error deserializing: %q", received)
-			continue
-		}
-
-		handleRequest(request, conn)
 	}
 }
 
-func handleRequest(request *internal.Data, conn net.Conn) {
-	switch request.GetKind() {
-	case internal.ArrayKind:
-		command, err := request.GetArray()
-		if err != nil {
-			// TODO: Return error
-			log.Printf("error getting array: %v", err)
-			return
-		}
-
-		handleCommand(conn, command[0], command[1:])
-	default:
-		log.Printf("error unhandled kind: %s", request.GetKind())
-		respondError(conn)
-	}
-}
-
-func handleCommand(conn net.Conn, commandData internal.Data, args []internal.Data) {
-	command, err := commandData.GetString()
+func (s *Server) readRequest(conn net.Conn) (*internal.Data, error) {
+	buffer := make([]byte, s.config.MaxMessageSize)
+	n, err := conn.Read(buffer)
 	if err != nil {
-		log.Printf("error command should be simple string: %v", command)
-
+		return nil, err
 	}
+
+	return internal.Deserialize(string(buffer[:n]))
+}
+
+func (s *Server) processRequest(ctx context.Context, conn net.Conn, request *internal.Data) error {
+	// TODO: Use ok instead of error
+	command, err := request.GetArray()
+	if err != nil {
+		return fmt.Errorf("failed to get command array: %w", err)
+	}
+
+	if len(command) < 1 {
+		return s.sendError(conn, "empty command")
+	}
+
+	cmdStr, err := command[0].GetString()
+	if err != nil {
+		return fmt.Errorf("failed to get command string: %w", err)
+	}
+
+	response, err := s.handler.Handle(ctx, cmdStr, command[1:])
+	if err != nil {
+		return s.sendError(conn, err.Error())
+	}
+
+	return s.sendResponse(conn, response)
+}
+
+func (s *Server) sendResponse(conn net.Conn, response *internal.Data) error {
+	if err := conn.SetWriteDeadline(time.Now().Add(s.config.WriteTimeout)); err != nil {
+		return fmt.Errorf("failed to set write deadline: %w", err)
+	}
+
+	serialized, err := internal.Serialize(*response)
+	if err != nil {
+		return fmt.Errorf("failed to serialize response: %w", err)
+	}
+
+	_, err = conn.Write([]byte(serialized))
+	return err
+}
+
+func (s *Server) sendError(conn net.Conn, message string) error {
+	return s.sendResponse(conn, internal.NewSimpleError(message))
+}
+
+// Handle implements the CommandHandler interface for DefaultCommandHanlder
+func (h *DefaultCommandHandler) Handle(ctx context.Context, command string, args []internal.Data) (*internal.Data, error) {
 	switch command {
 	case "PING":
-		response, err := internal.Serialize(*internal.NewSimpleStringData("PONG"))
-		if err != nil {
-			log.Printf("error serializing: %v", err)
-			return
-		}
-		sendResponse(response, conn)
-	case "COMMAND":
-		response, err := internal.Serialize(*internal.NewSimpleStringData("CONNECTED"))
-		if err != nil {
-			log.Printf("error serializing: %v", err)
-			return
-		}
-		sendResponse(response, conn)
+		return internal.NewSimpleStringData("PONG"), nil
 	case "ECHO":
-		response, err := internal.Serialize(*internal.NewArrayData(args))
-		if err != nil {
-			log.Printf("error serializing: %v", err)
-			return
-		}
-		sendResponse(response, conn)
+		return internal.NewArrayData(args), nil
+	case "COMMAND":
+		return internal.NewSimpleStringData("CONNECTED"), nil
 	default:
-		log.Printf("unknown command: %s", command)
+		return nil, fmt.Errorf("unknown command: %s", command)
 	}
 }
 
-func respondError(conn net.Conn) {
-	response, err := internal.Serialize(*internal.NewSimpleError("unexpected command"))
-	if err != nil {
-		log.Printf("error serializing: %v", err)
+func main() {
+	config := Config{
+		Address:         "localhost:6379",
+		ReadTimeout:     30 * time.Second,
+		WriteTimeout:    30 * time.Second,
+		MaxMessageSize:  1024 * 1024, // 1MB
+		ShutdownTimeout: 30 * time.Second,
 	}
-	sendResponse(response, conn)
-}
 
-func sendResponse(response string, conn net.Conn) {
-	_, err := conn.Write([]byte(response))
-	// TODO: Return error
-	if err != nil {
-		log.Printf("error writing: %v", err)
+	logger := slog.New((slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})))
+
+	server := NewServer(config, logger, &DefaultCommandHandler{})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if err := server.Start(ctx); err != nil {
+		logger.Error("failed to start server", "error", err)
+		os.Exit(1)
 	}
-	log.Printf("write response: %q", response)
+
+	// Handle shutdown signals
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt)
+
+	<-sigChan
+	logger.Info("shutting down server...")
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), config.ShutdownTimeout)
+	defer shutdownCancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.Error("failed to shutdown server gracefully", "error", err)
+		os.Exit(1)
+	}
 }
