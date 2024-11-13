@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"time"
 )
@@ -194,7 +195,7 @@ func (s *Server) processRequest(ctx context.Context, conn net.Conn, request *int
 		return fmt.Errorf("failed to get command string: %w", err)
 	}
 
-	response, err := s.handler.Handle(ctx, cmdStr, command[1:])
+	response, err := s.handler.Handle(ctx, strings.ToUpper(cmdStr), command[1:])
 	if err != nil {
 		return s.sendError(conn, err.Error())
 	}
@@ -235,6 +236,8 @@ func (h *DefaultCommandHandler) Handle(ctx context.Context, command string, args
 		return h.handleSetCommand(args)
 	case "GET":
 		return h.handleGetCommand(args)
+	case "HELLO":
+		return h.handleHelloCommand(args)
 	default:
 		return nil, fmt.Errorf("unknown command: %s", command)
 	}
@@ -276,6 +279,10 @@ func (h *DefaultCommandHandler) handleGetCommand(args []internal.Data) (*interna
 		return internal.NewNullData(), nil
 	}
 	return internal.NewBulkStringData(value), nil
+}
+
+func (h *DefaultCommandHandler) handleHelloCommand(args []internal.Data) (*internal.Data, error) {
+	return internal.NewBulkStringData("OK"), nil
 }
 
 func main() {
