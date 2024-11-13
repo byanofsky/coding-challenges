@@ -171,7 +171,11 @@ func (s *Server) readRequest(conn net.Conn) (*internal.Data, error) {
 		return nil, err
 	}
 
-	return internal.Deserialize(string(buffer[:n]))
+	request := string(buffer[:n])
+
+	s.logger.Info("request received", "request", request)
+
+	return internal.Deserialize(request)
 }
 
 func (s *Server) processRequest(ctx context.Context, conn net.Conn, request *internal.Data) error {
@@ -207,6 +211,8 @@ func (s *Server) sendResponse(conn net.Conn, response *internal.Data) error {
 	if err != nil {
 		return fmt.Errorf("failed to serialize response: %w", err)
 	}
+
+	s.logger.Info("send response", "response", serialized)
 
 	_, err = conn.Write([]byte(serialized))
 	return err
