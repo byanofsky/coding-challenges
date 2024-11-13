@@ -274,7 +274,7 @@ func (h *DefaultCommandHandler) handleGetCommand(args []internal.Data) (*interna
 func main() {
 	config := Config{
 		Address:         "localhost:6379",
-		ReadTimeout:     30 * time.Second,
+		ReadTimeout:     30 * time.Minute,
 		WriteTimeout:    30 * time.Second,
 		MaxMessageSize:  1024 * 1024, // 1MB
 		ShutdownTimeout: 30 * time.Second,
