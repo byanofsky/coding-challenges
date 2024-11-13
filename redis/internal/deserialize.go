@@ -7,9 +7,10 @@ import (
 )
 
 var BULK_STRING_RE = regexp.MustCompile(`(?s)^(-?\d+)\r\n(.*)$`)
-var SIMPLE_STRING_RE = regexp.MustCompile(`^([^\n\r]+)\r\n(.*)$`)
+var SIMPLE_STRING_RE = regexp.MustCompile(`(?s)^([^\r\n]+)\r\n(.*)$`)
 var INT_RE = regexp.MustCompile(`^((?:\+|-)?\d+)\r\n(.*)$`)
 var ARRAY_RE = regexp.MustCompile(`(?s)^(\d+)\r\n(.*)$`)
+var MAP_RE = regexp.MustCompile(`(?s)^(\d+)\r\n(.*)$`)
 var SIMPLE_ERROR_RE = regexp.MustCompile(`(?s)^([^\n\r]+)\r\n(.*)$`)
 
 func Deserialize(s string) (*Data, error) {
@@ -107,6 +108,38 @@ func deserializeArray(s string) (*Data, string, error) {
 	return &Data{kind: ArrayKind, value: value}, remaining, nil
 }
 
+func deserializeMap(s string) (*Data, string, error) {
+	var remaining string
+	match := MAP_RE.FindStringSubmatch(s)
+	if match == nil {
+		return nil, "", fmt.Errorf("error map format: %q", s)
+	}
+
+	length, err := strconv.Atoi(match[1])
+	if err != nil {
+		return nil, remaining, fmt.Errorf("error parsing map length: %w", err)
+	}
+	remaining = match[2]
+	m := make(map[Data]Data, length)
+
+	for length > 0 {
+		var key *Data
+		var value *Data
+		key, remaining, err = parseDeserialize(remaining)
+		if err != nil {
+			return nil, remaining, err
+		}
+		value, remaining, err = parseDeserialize(remaining)
+		if err != nil {
+			return nil, remaining, err
+		}
+		m[*key] = *value
+		length--
+	}
+
+	return &Data{kind: MapKind, value: m}, remaining, nil
+}
+
 func deserializeSimpleError(s string) (*Data, string, error) {
 	m := SIMPLE_ERROR_RE.FindStringSubmatch(s)
 	if m == nil {
@@ -129,6 +162,8 @@ func parseDeserialize(s string) (*Data, string, error) {
 		return deserializeInt(remaining)
 	case '*':
 		return deserializeArray(remaining)
+	case '%':
+		return deserializeMap(remaining)
 	case '-':
 		return deserializeSimpleError(remaining)
 	default:

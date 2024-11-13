@@ -18,6 +18,8 @@ func Serialize(data Data) (string, error) {
 		return serializeInt(data)
 	case SimpleErrorKind:
 		return serializeSimpleError(data)
+	case MapKind:
+		return serializeMap(data)
 	default:
 		return "", fmt.Errorf("error unexpected data type: %v", data.kind)
 	}
@@ -68,6 +70,31 @@ func serializeArray(d Data) (string, error) {
 			return "", err
 		}
 		result += s
+	}
+
+	return result, nil
+}
+
+func serializeMap(d Data) (string, error) {
+	m, err := d.GetMap()
+	if err != nil {
+		return "", fmt.Errorf("error serializing map: %w", err)
+	}
+
+	result := fmt.Sprintf("%%%d\r\n", len(m))
+
+	for key, value := range m {
+		k, err := Serialize(key)
+		if err != nil {
+			return "", err
+		}
+		result += k
+
+		v, err := Serialize(value)
+		if err != nil {
+			return "", err
+		}
+		result += v
 	}
 
 	return result, nil

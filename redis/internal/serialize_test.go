@@ -31,6 +31,14 @@ func TestSerialize(t *testing.T) {
 			{kind: BulkStringKind, value: "get"},
 			{kind: BulkStringKind, value: "key"},
 		}}, "*2\r\n$3\r\nget\r\n$3\r\nkey\r\n")
+	runSerializeTest(t, "Map",
+		Data{
+			kind: MapKind,
+			value: map[Data]Data{
+				*NewSimpleStringData("key1"): *NewBulkStringData("value1"),
+			},
+		}, "%1\r\n+key1\r\n$6\r\nvalue1\r\n")
+	// TODO: map test with multiple elements. Need to handle ordering
 	runSerializeTest(t, "SimpleError", Data{kind: SimpleErrorKind, value: "Error message"}, "-Error message\r\n")
 }
 

@@ -10,6 +10,7 @@ const (
 	BulkStringKind
 	IntKind
 	ArrayKind
+	MapKind
 	SimpleErrorKind
 )
 
@@ -27,6 +28,8 @@ func (k Kind) String() string {
 		return "Array"
 	case SimpleErrorKind:
 		return "SimpleError"
+	case MapKind:
+		return "Map"
 	default:
 		return "Unknown"
 	}
@@ -49,6 +52,8 @@ func (d Data) String() string {
 		return fmt.Sprintf("Data{%d}", d.value)
 	case ArrayKind:
 		return fmt.Sprintf("Data{%v}", d.value)
+	case MapKind:
+		return fmt.Sprintf("Data(%v)", d.value)
 	case SimpleErrorKind:
 		return fmt.Sprintf("Data{Error: %q}", d.value)
 	default:
@@ -92,6 +97,17 @@ func (d Data) GetArray() ([]Data, error) {
 		return nil, fmt.Errorf("error value is not an array: %v", d.value)
 	}
 	return a, nil
+}
+
+func (d Data) GetMap() (map[Data]Data, error) {
+	if d.kind != MapKind {
+		return nil, fmt.Errorf("cannot GetMap of kind: %s", d.kind)
+	}
+	m, ok := d.value.(map[Data]Data)
+	if !ok {
+		return nil, fmt.Errorf("error value is not a map: %v", d.value)
+	}
+	return m, nil
 }
 
 func NewSimpleStringData(s string) *Data {

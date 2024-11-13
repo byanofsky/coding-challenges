@@ -15,6 +15,9 @@ func TestDeserialize(t *testing.T) {
 	runDeserializeTest(t, "Int", ":+5\r\n", Data{kind: IntKind, value: 5})
 	runDeserializeTest(t, "Int", ":-5\r\n", Data{kind: IntKind, value: -5})
 	runDeserializeTest(t, "Array SimpleString", "*1\r\n+ping\r\n", Data{kind: ArrayKind, value: []Data{{kind: SimpleStringKind, value: "ping"}}})
+	runDeserializeTest(t, "Array SimpleString", "*2\r\n+ping\r\n+pong\r\n", Data{
+		kind:  ArrayKind,
+		value: []Data{{kind: SimpleStringKind, value: "ping"}, {kind: SimpleStringKind, value: "pong"}}})
 	runDeserializeTest(t, "BulkStringEmpty", "$0\r\n\r\n", Data{kind: BulkStringKind, value: ""})
 	runDeserializeTest(t, "BulkString1", "$11\r\nhello world\r\n", Data{kind: BulkStringKind, value: "hello world"})
 	runDeserializeTest(t, "BulkString With CRLF", "$12\r\nhello\r\nworld\r\n", Data{kind: BulkStringKind, value: "hello\r\nworld"})
@@ -35,6 +38,13 @@ func TestDeserialize(t *testing.T) {
 			{kind: BulkStringKind, value: "get"},
 			{kind: BulkStringKind, value: "key"},
 		}})
+	runDeserializeTest(t, "Map", "%2\r\n+key1\r\n$6\r\nvalue1\r\n+key2\r\n$6\r\nvalue2\r\n", Data{
+		kind: MapKind,
+		value: map[Data]Data{
+			*NewSimpleStringData("key1"): *NewBulkStringData("value1"),
+			*NewSimpleStringData("key2"): *NewBulkStringData("value2"),
+		},
+	})
 	// runDeserializeTest(t, "SimpleError", "-Error message\r\n", &Data{kind: SimpleErrorKind, value: "Error message"})
 }
 
