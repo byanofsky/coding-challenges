@@ -34,7 +34,7 @@ type Server struct {
 
 // Dictionary stores key value pairs
 type Dictionary struct {
-	m  *sync.Mutex
+	m  *sync.RWMutex
 	kv map[string]string
 }
 
@@ -50,7 +50,7 @@ type DefaultCommandHandler struct {
 
 // TODO: Return pointer?
 func NewDictionary() Dictionary {
-	return Dictionary{m: &sync.Mutex{}, kv: make(map[string]string)}
+	return Dictionary{m: &sync.RWMutex{}, kv: make(map[string]string)}
 }
 
 // TODO: Add mutex
@@ -62,8 +62,8 @@ func (d *Dictionary) Set(k string, v string) {
 
 // TODO: Add mutex
 func (d *Dictionary) Get(k string) (string, error) {
-	d.m.Lock()
-	defer d.m.Unlock()
+	d.m.RLock()
+	defer d.m.RUnlock()
 	value, ok := d.kv[k]
 	if !ok {
 		return value, fmt.Errorf("no value for key %s", k)
