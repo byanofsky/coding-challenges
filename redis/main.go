@@ -60,16 +60,11 @@ func (d *Dictionary) Set(k string, v string) {
 	d.kv[k] = v
 }
 
-// TODO: Add mutex
-func (d *Dictionary) Get(k string) (string, error) {
+func (d *Dictionary) Get(k string) (string, bool) {
 	d.m.RLock()
 	defer d.m.RUnlock()
 	value, ok := d.kv[k]
-	if !ok {
-		// TODO: Use custom error
-		return value, fmt.Errorf("no value for key %s", k)
-	}
-	return value, nil
+	return value, ok
 }
 
 // NewServer creates a new server instance
@@ -256,7 +251,7 @@ func (h *DefaultCommandHandler) handleSetCommand(args []internal.Data) (*interna
 	}
 
 	h.dict.Set(key, value)
-	return internal.NewSimpleStringData("OK"), nil
+	return internal.NewBulkStringData("OK"), nil
 }
 
 func (h *DefaultCommandHandler) handleGetCommand(args []internal.Data) (*internal.Data, error) {
@@ -270,11 +265,11 @@ func (h *DefaultCommandHandler) handleGetCommand(args []internal.Data) (*interna
 		return nil, fmt.Errorf("first arg must be string")
 	}
 
-	value, err := h.dict.Get(key)
-	if err != nil {
-		return nil, err
+	value, ok := h.dict.Get(key)
+	if !ok {
+		return internal.NewNullData(), nil
 	}
-	return internal.NewSimpleStringData(value), nil
+	return internal.NewBulkStringData(value), nil
 }
 
 func main() {
