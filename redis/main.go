@@ -66,6 +66,7 @@ func (d *Dictionary) Get(k string) (string, error) {
 	defer d.m.RUnlock()
 	value, ok := d.kv[k]
 	if !ok {
+		// TODO: Use custom error
 		return value, fmt.Errorf("no value for key %s", k)
 	}
 	return value, nil
