@@ -122,6 +122,10 @@ func NewArrayData(a []Data) *Data {
 	return &Data{kind: ArrayKind, value: a}
 }
 
+func NewMapData(m map[Data]Data) *Data {
+	return &Data{kind: MapKind, value: m}
+}
+
 func NewSimpleError(e string) *Data {
 	return &Data{kind: SimpleErrorKind, value: e}
 }
