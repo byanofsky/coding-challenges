@@ -282,7 +282,10 @@ func (h *DefaultCommandHandler) handleGetCommand(args []internal.Data) (*interna
 }
 
 func (h *DefaultCommandHandler) handleHelloCommand(args []internal.Data) (*internal.Data, error) {
-	return internal.NewBulkStringData("OK"), nil
+	return internal.NewArrayData([]internal.Data{
+		*internal.NewBulkStringData("server"),
+		*internal.NewBulkStringData("redis"),
+	}), nil
 }
 
 func main() {
