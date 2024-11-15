@@ -47,10 +47,14 @@ type Dictionary struct {
 }
 
 type SetCommandOptions struct {
-	ex             bool
-	exSeconds      int
-	px             bool
-	pxMilliseconds int
+	ex               bool
+	exSeconds        int
+	px               bool
+	pxMilliseconds   int
+	exat             bool
+	exatSeconds      int64
+	pxat             bool
+	pxatMilliseconds int64
 }
 
 // CommandHandler defines the interface for handling commands
@@ -81,6 +85,16 @@ func (d *Dictionary) SetWithExpire(k string, v string, expireMs int) {
 	defer d.m.Unlock()
 
 	ttl := time.Now().Add(time.Duration(expireMs) * time.Millisecond)
+
+	d.kv[k] = KVRecord{value: v, ttl: ttl, expire: true}
+}
+
+// TODO: Dedupe set functions
+func (d *Dictionary) SetWithExpireAt(k string, v string, expireAt int64) {
+	d.m.Lock()
+	defer d.m.Unlock()
+
+	ttl := time.UnixMilli(expireAt)
 
 	d.kv[k] = KVRecord{value: v, ttl: ttl, expire: true}
 }
@@ -296,10 +310,8 @@ func (h *DefaultCommandHandler) handleSetCommand(args []internal.Data) (*interna
 			return nil, fmt.Errorf("invalid option flag")
 		}
 		switch strings.ToUpper(option) {
+		// TODO: Dedupe cases
 		case "EX":
-			if options.px {
-				return nil, fmt.Errorf("error set command cannot include both EX and PX")
-			}
 			i++
 			options.ex = true
 			if i >= len(args) {
@@ -317,9 +329,6 @@ func (h *DefaultCommandHandler) handleSetCommand(args []internal.Data) (*interna
 			}
 			options.exSeconds = seconds
 		case "PX":
-			if options.ex {
-				return nil, fmt.Errorf("error set command cannot include both EX and PX")
-			}
 			i++
 			options.px = true
 			if i >= len(args) {
@@ -336,6 +345,40 @@ func (h *DefaultCommandHandler) handleSetCommand(args []internal.Data) (*interna
 				return nil, fmt.Errorf("PX not followed by int")
 			}
 			options.pxMilliseconds = milliseconds
+		case "EXAT":
+			i++
+			options.exat = true
+			if i >= len(args) {
+				return nil, fmt.Errorf("command error. EXAT must be followed by int")
+			}
+			s, err := args[i].GetString()
+			if err != nil {
+				// TODO: use generic error
+				return nil, fmt.Errorf("EXAT not followed by int")
+			}
+			seconds, err := strconv.ParseInt(s, 10, 64)
+			if err != nil {
+				// TODO: use generic error
+				return nil, fmt.Errorf("EXAT not followed by int")
+			}
+			options.exatSeconds = seconds
+		case "PXAT":
+			i++
+			options.pxat = true
+			if i >= len(args) {
+				return nil, fmt.Errorf("command error. PXAT must be followed by int")
+			}
+			s, err := args[i].GetString()
+			if err != nil {
+				// TODO: use generic error
+				return nil, fmt.Errorf("PXAT not followed by int")
+			}
+			milliseconds, err := strconv.ParseInt(s, 10, 64)
+			if err != nil {
+				// TODO: use generic error
+				return nil, fmt.Errorf("PXAT not followed by int")
+			}
+			options.pxatMilliseconds = milliseconds
 		default:
 			return nil, fmt.Errorf("error unexpected option: %v", args[i])
 		}
@@ -343,10 +386,15 @@ func (h *DefaultCommandHandler) handleSetCommand(args []internal.Data) (*interna
 	// TODO: Remove
 	// fmt.Printf("Options: %v", options)
 
+	// Allow multiple options, but priority order is EX > PX> EXAT
 	if options.ex {
 		h.dict.SetWithExpire(key, value, options.exSeconds*1000)
 	} else if options.px {
 		h.dict.SetWithExpire(key, value, options.pxMilliseconds)
+	} else if options.exat {
+		h.dict.SetWithExpireAt(key, value, options.exatSeconds*1000)
+	} else if options.pxat {
+		h.dict.SetWithExpireAt(key, value, options.pxatMilliseconds)
 	} else {
 		h.dict.Set(key, value)
 	}
