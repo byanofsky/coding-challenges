@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -33,10 +34,21 @@ type Server struct {
 	shutdownWg sync.WaitGroup
 }
 
+type KVRecord struct {
+	value  string
+	expire bool
+	ttl    time.Time
+}
+
 // Dictionary stores key value pairs
 type Dictionary struct {
 	m  *sync.RWMutex
-	kv map[string]string
+	kv map[string]KVRecord
+}
+
+type SetCommandOptions struct {
+	ex        bool
+	exSeconds int
 }
 
 // CommandHandler defines the interface for handling commands
@@ -51,21 +63,36 @@ type DefaultCommandHandler struct {
 
 // TODO: Return pointer?
 func NewDictionary() Dictionary {
-	return Dictionary{m: &sync.RWMutex{}, kv: make(map[string]string)}
+	return Dictionary{m: &sync.RWMutex{}, kv: make(map[string]KVRecord)}
 }
 
 // TODO: Add mutex
 func (d *Dictionary) Set(k string, v string) {
 	d.m.Lock()
 	defer d.m.Unlock()
-	d.kv[k] = v
+
+	d.kv[k] = KVRecord{value: v, ttl: time.Time{}, expire: false}
+}
+
+func (d *Dictionary) SetWithExpire(k string, v string, expireMs int) {
+	d.m.Lock()
+	defer d.m.Unlock()
+
+	ttl := time.Now().Add(time.Duration(expireMs) * time.Millisecond)
+
+	d.kv[k] = KVRecord{value: v, ttl: ttl, expire: true}
 }
 
 func (d *Dictionary) Get(k string) (string, bool) {
 	d.m.RLock()
 	defer d.m.RUnlock()
-	value, ok := d.kv[k]
-	return value, ok
+	record, ok := d.kv[k]
+	if record.expire {
+		if !(time.Now().Before(record.ttl)) {
+			return "", false
+		}
+	}
+	return record.value, ok
 }
 
 // NewServer creates a new server instance
@@ -245,7 +272,7 @@ func (h *DefaultCommandHandler) Handle(ctx context.Context, command string, args
 
 func (h *DefaultCommandHandler) handleSetCommand(args []internal.Data) (*internal.Data, error) {
 	// Validate input
-	if len(args) != 2 {
+	if len(args) < 2 {
 		return nil, fmt.Errorf("invalid set command")
 	}
 
@@ -259,7 +286,42 @@ func (h *DefaultCommandHandler) handleSetCommand(args []internal.Data) (*interna
 		return nil, fmt.Errorf("second arg must be string")
 	}
 
-	h.dict.Set(key, value)
+	options := SetCommandOptions{}
+	for i := 2; i < len(args); i++ {
+		option, err := args[i].GetString()
+		if err != nil {
+			// TODO: include command in error for logging
+			return nil, fmt.Errorf("invalid option flag")
+		}
+		switch strings.ToUpper(option) {
+		case "EX":
+			i++
+			options.ex = true
+			if i >= len(args) {
+				return nil, fmt.Errorf("command error. EX must be followed by int")
+			}
+			s, err := args[i].GetString()
+			if err != nil {
+				// TODO: use generic error
+				return nil, fmt.Errorf("EX not followed by int")
+			}
+			seconds, err := strconv.Atoi(s)
+			if err != nil {
+				// TODO: use generic error
+				return nil, fmt.Errorf("EX not followed by int")
+			}
+			options.exSeconds = seconds
+		}
+	}
+	// TODO: Remove
+	// fmt.Printf("Options: %v", options)
+
+	if options.ex {
+		h.dict.SetWithExpire(key, value, options.exSeconds*1000)
+	} else {
+		h.dict.Set(key, value)
+	}
+
 	return internal.NewBulkStringData("OK"), nil
 }
 
