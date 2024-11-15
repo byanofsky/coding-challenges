@@ -47,8 +47,10 @@ type Dictionary struct {
 }
 
 type SetCommandOptions struct {
-	ex        bool
-	exSeconds int
+	ex             bool
+	exSeconds      int
+	px             bool
+	pxMilliseconds int
 }
 
 // CommandHandler defines the interface for handling commands
@@ -295,6 +297,9 @@ func (h *DefaultCommandHandler) handleSetCommand(args []internal.Data) (*interna
 		}
 		switch strings.ToUpper(option) {
 		case "EX":
+			if options.px {
+				return nil, fmt.Errorf("error set command cannot include both EX and PX")
+			}
 			i++
 			options.ex = true
 			if i >= len(args) {
@@ -311,6 +316,28 @@ func (h *DefaultCommandHandler) handleSetCommand(args []internal.Data) (*interna
 				return nil, fmt.Errorf("EX not followed by int")
 			}
 			options.exSeconds = seconds
+		case "PX":
+			if options.ex {
+				return nil, fmt.Errorf("error set command cannot include both EX and PX")
+			}
+			i++
+			options.px = true
+			if i >= len(args) {
+				return nil, fmt.Errorf("command error. PX must be followed by int")
+			}
+			s, err := args[i].GetString()
+			if err != nil {
+				// TODO: use generic error
+				return nil, fmt.Errorf("PX not followed by int")
+			}
+			milliseconds, err := strconv.Atoi(s)
+			if err != nil {
+				// TODO: use generic error
+				return nil, fmt.Errorf("PX not followed by int")
+			}
+			options.pxMilliseconds = milliseconds
+		default:
+			return nil, fmt.Errorf("error unexpected option: %v", args[i])
 		}
 	}
 	// TODO: Remove
@@ -318,6 +345,8 @@ func (h *DefaultCommandHandler) handleSetCommand(args []internal.Data) (*interna
 
 	if options.ex {
 		h.dict.SetWithExpire(key, value, options.exSeconds*1000)
+	} else if options.px {
+		h.dict.SetWithExpire(key, value, options.pxMilliseconds)
 	} else {
 		h.dict.Set(key, value)
 	}
