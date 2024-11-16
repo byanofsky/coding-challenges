@@ -77,7 +77,25 @@ func (d *Dictionary) Set(k string, v string) {
 	d.m.Lock()
 	defer d.m.Unlock()
 
+	d.set(k, v)
+}
+
+func (d *Dictionary) set(k string, v string) {
 	d.kv[k] = KVRecord{value: v, ttl: time.Time{}, expire: false}
+}
+
+// Private method to replace value in dict record. Consumer must acquire lock
+func (d *Dictionary) replaceOrSet(k string, v string) {
+	record, ok := d.kv[k]
+	// Does not exist, so set
+	if !ok {
+		d.set(k, v)
+		return
+	}
+	// Exists, so replace value, but retain existing expiration
+	record.value = v
+	// TODO: Why record need to be set? Is record copied?
+	d.kv[k] = record
 }
 
 func (d *Dictionary) SetWithExpire(k string, v string, expireMs int) {
@@ -103,6 +121,30 @@ func (d *Dictionary) Get(k string) (string, bool) {
 	d.m.RLock()
 	defer d.m.RUnlock()
 	return d.get(k)
+}
+
+// Returns int, but stores string
+func (d *Dictionary) Incr(k string) (int64, error) {
+	d.m.Lock()
+	defer d.m.Unlock()
+
+	var i int64
+	value, ok := d.get(k)
+	if !ok {
+		i = 0
+	} else {
+		var err error
+		i, err = strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("error unable to parse value to int: %v", value)
+		}
+	}
+
+	// Increment, then store
+	i++
+	d.replaceOrSet(k, strconv.FormatInt(i, 10))
+
+	return i, nil
 }
 
 // Private method to get value. Expect consumer to acquire mutex lock.
@@ -304,6 +346,8 @@ func (h *DefaultCommandHandler) Handle(ctx context.Context, command string, args
 		return h.handleExistsCommand(args)
 	case "DEL":
 		return h.handleDelCommand(args)
+	case "INCR":
+		return h.handleIncrCommand(args)
 	case "HELLO":
 		return h.handleHelloCommand(args)
 	default:
@@ -477,6 +521,26 @@ func (h *DefaultCommandHandler) handleDelCommand(args []internal.Data) (*interna
 	}
 
 	return internal.NewIntData(count), nil
+}
+
+func (h *DefaultCommandHandler) handleIncrCommand(args []internal.Data) (*internal.Data, error) {
+	// Validation
+	if len(args) != 1 {
+		return nil, fmt.Errorf("invalid INCR command")
+	}
+
+	// TODO: Change GetString to return `ok` instead of error
+	key, err := args[0].GetString()
+	if err != nil {
+		return nil, fmt.Errorf("INCR arg must be string")
+	}
+
+	i, err := h.dict.Incr(key)
+	if err != nil {
+		return nil, fmt.Errorf("error while incrementing: %w", err)
+	}
+	// TODO: NewIntData support int64
+	return internal.NewIntData(int(i)), nil
 }
 
 func (h *DefaultCommandHandler) handleHelloCommand(args []internal.Data) (*internal.Data, error) {
