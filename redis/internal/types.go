@@ -118,6 +118,10 @@ func NewBulkStringData(s string) *Data {
 	return &Data{kind: BulkStringKind, value: s}
 }
 
+func NewIntData(i int) *Data {
+	return &Data{kind: IntKind, value: i}
+}
+
 func NewArrayData(a []Data) *Data {
 	return &Data{kind: ArrayKind, value: a}
 }

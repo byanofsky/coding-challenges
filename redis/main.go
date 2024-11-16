@@ -279,6 +279,8 @@ func (h *DefaultCommandHandler) Handle(ctx context.Context, command string, args
 		return h.handleSetCommand(args)
 	case "GET":
 		return h.handleGetCommand(args)
+	case "EXISTS":
+		return h.handleExistsCommand(args)
 	case "HELLO":
 		return h.handleHelloCommand(args)
 	default:
@@ -418,6 +420,23 @@ func (h *DefaultCommandHandler) handleGetCommand(args []internal.Data) (*interna
 		return internal.NewNullData(), nil
 	}
 	return internal.NewBulkStringData(value), nil
+}
+
+func (h *DefaultCommandHandler) handleExistsCommand(args []internal.Data) (*internal.Data, error) {
+	count := 0
+
+	for _, arg := range args {
+		key, err := arg.GetString()
+		if err != nil {
+			return nil, fmt.Errorf("arg must be string")
+		}
+		_, ok := h.dict.Get(key)
+		if ok {
+			count++
+		}
+	}
+
+	return internal.NewIntData(count), nil
 }
 
 func (h *DefaultCommandHandler) handleHelloCommand(args []internal.Data) (*internal.Data, error) {
