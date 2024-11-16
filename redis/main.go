@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -34,10 +35,19 @@ type Server struct {
 	shutdownWg sync.WaitGroup
 }
 
+type RecordKind int
+
+const (
+	StringRecord RecordKind = iota
+	ListRecord
+)
+
 type KVRecord struct {
-	value  string
-	expire bool
-	ttl    time.Time
+	kind      RecordKind
+	value     string
+	listValue []string
+	expire    bool
+	ttl       time.Time
 }
 
 // Dictionary stores key value pairs
@@ -72,6 +82,47 @@ func NewDictionary() Dictionary {
 	return Dictionary{m: &sync.RWMutex{}, kv: make(map[string]KVRecord)}
 }
 
+func (d *Dictionary) LeftPushList(k string, elements []string) (int, error) {
+	d.m.Lock()
+	defer d.m.Unlock()
+
+	fmt.Println(elements)
+
+	var list []string
+	record, exists := d.kv[k]
+	if !exists {
+		// key not exist, create list
+		slices.Reverse(elements) // Reverse for left push
+		d.setList(k, elements)
+		return len(elements), nil
+	}
+
+	// If key exists, check it's a list or throw
+	if record.kind != ListRecord {
+		return 0, fmt.Errorf("value at key is not a list")
+	}
+	list = record.listValue
+
+	slices.Reverse(elements) // Reverse for left push
+	elements = append(elements, list...)
+	d.setList(k, elements)
+
+	return len(elements), nil
+}
+
+// Private method. Caller should use mutex
+func (d *Dictionary) setList(k string, l []string) {
+	d.kv[k] = KVRecord{kind: ListRecord, listValue: l, ttl: time.Time{}, expire: false}
+}
+
+func (d *Dictionary) Kind(k string) (RecordKind, bool) {
+	record, ok := d.kv[k]
+	if !ok {
+		return 0, false
+	}
+	return record.kind, true
+}
+
 // TODO: Add mutex
 func (d *Dictionary) Set(k string, v string) {
 	d.m.Lock()
@@ -81,7 +132,7 @@ func (d *Dictionary) Set(k string, v string) {
 }
 
 func (d *Dictionary) set(k string, v string) {
-	d.kv[k] = KVRecord{value: v, ttl: time.Time{}, expire: false}
+	d.kv[k] = KVRecord{kind: StringRecord, value: v, ttl: time.Time{}, expire: false}
 }
 
 // Private method to replace value in dict record. Consumer must acquire lock
@@ -104,7 +155,7 @@ func (d *Dictionary) SetWithExpire(k string, v string, expireMs int) {
 
 	ttl := time.Now().Add(time.Duration(expireMs) * time.Millisecond)
 
-	d.kv[k] = KVRecord{value: v, ttl: ttl, expire: true}
+	d.kv[k] = KVRecord{kind: StringRecord, value: v, ttl: ttl, expire: true}
 }
 
 // TODO: Dedupe set functions
@@ -114,13 +165,20 @@ func (d *Dictionary) SetWithExpireAt(k string, v string, expireAt int64) {
 
 	ttl := time.UnixMilli(expireAt)
 
-	d.kv[k] = KVRecord{value: v, ttl: ttl, expire: true}
+	d.kv[k] = KVRecord{kind: StringRecord, value: v, ttl: ttl, expire: true}
 }
 
 func (d *Dictionary) Get(k string) (string, bool) {
 	d.m.RLock()
 	defer d.m.RUnlock()
 	return d.get(k)
+}
+
+func (d *Dictionary) GetList(k string) ([]string, bool) {
+	d.m.RLock()
+	defer d.m.RUnlock()
+	record, ok := d.kv[k]
+	return record.listValue, ok
 }
 
 // Returns int, but stores string
@@ -374,6 +432,8 @@ func (h *DefaultCommandHandler) Handle(ctx context.Context, command string, args
 		return h.handleIncrCommand(args)
 	case "DECR":
 		return h.handleDecrCommand(args)
+	case "LPUSH":
+		return h.handleLpushCommand(args)
 	case "HELLO":
 		return h.handleHelloCommand(args)
 	default:
@@ -508,11 +568,27 @@ func (h *DefaultCommandHandler) handleGetCommand(args []internal.Data) (*interna
 		return nil, fmt.Errorf("first arg must be string")
 	}
 
-	value, ok := h.dict.Get(key)
-	if !ok {
+	kind, exists := h.dict.Kind(key)
+
+	if !exists {
 		return internal.NewNullData(), nil
 	}
-	return internal.NewBulkStringData(value), nil
+
+	switch kind {
+	case StringRecord:
+		value, _ := h.dict.Get(key)
+		return internal.NewBulkStringData(value), nil
+	case ListRecord:
+		value, _ := h.dict.GetList(key)
+		// Convert to string data
+		data := make([]internal.Data, len(value))
+		for i, s := range value {
+			data[i] = *internal.NewBulkStringData(s)
+		}
+		return internal.NewArrayData(data), nil
+	default:
+		return nil, fmt.Errorf("unexpected value type stored at key")
+	}
 }
 
 func (h *DefaultCommandHandler) handleExistsCommand(args []internal.Data) (*internal.Data, error) {
@@ -587,6 +663,35 @@ func (h *DefaultCommandHandler) handleDecrCommand(args []internal.Data) (*intern
 	}
 	// TODO: NewIntData support int64
 	return internal.NewIntData(int(i)), nil
+}
+
+func (h *DefaultCommandHandler) handleLpushCommand(args []internal.Data) (*internal.Data, error) {
+	// Validation
+	if len(args) < 2 {
+		return nil, fmt.Errorf("invalid LPUSH command")
+	}
+	// TODO: Change GetString to return `ok` instead of error
+	key, err := args[0].GetString()
+	if err != nil {
+		return nil, fmt.Errorf("LPUSH key arg must be string")
+	}
+
+	stringList := make([]string, len(args)-1)
+	for i, a := range args[1:] {
+		s, err := a.GetString()
+		if err != nil {
+			return nil, fmt.Errorf("element %d is not a string", i)
+		}
+		stringList[i] = s
+	}
+
+	l, err := h.dict.LeftPushList(key, stringList)
+	if err != nil {
+		// TODO: use error that can be sent to client
+		return nil, fmt.Errorf("LPUSH failed: %w", err)
+	}
+
+	return internal.NewIntData(l), nil
 }
 
 func (h *DefaultCommandHandler) handleHelloCommand(args []internal.Data) (*internal.Data, error) {
