@@ -102,6 +102,11 @@ func (d *Dictionary) SetWithExpireAt(k string, v string, expireAt int64) {
 func (d *Dictionary) Get(k string) (string, bool) {
 	d.m.RLock()
 	defer d.m.RUnlock()
+	return d.get(k)
+}
+
+// Private method to get value. Expect consumer to acquire mutex lock.
+func (d *Dictionary) get(k string) (string, bool) {
 	record, ok := d.kv[k]
 	if record.expire {
 		if !(time.Now().Before(record.ttl)) {
@@ -109,6 +114,22 @@ func (d *Dictionary) Get(k string) (string, bool) {
 		}
 	}
 	return record.value, ok
+}
+
+func (d *Dictionary) Del(k string) bool {
+	// Acquire write lock before reading and deleting
+	d.m.Lock()
+	defer d.m.Unlock()
+
+	_, ok := d.get(k)
+
+	if !ok {
+		return false
+	}
+
+	delete(d.kv, k)
+
+	return true
 }
 
 // NewServer creates a new server instance
@@ -281,6 +302,8 @@ func (h *DefaultCommandHandler) Handle(ctx context.Context, command string, args
 		return h.handleGetCommand(args)
 	case "EXISTS":
 		return h.handleExistsCommand(args)
+	case "DEL":
+		return h.handleDelCommand(args)
 	case "HELLO":
 		return h.handleHelloCommand(args)
 	default:
@@ -431,6 +454,23 @@ func (h *DefaultCommandHandler) handleExistsCommand(args []internal.Data) (*inte
 			return nil, fmt.Errorf("arg must be string")
 		}
 		_, ok := h.dict.Get(key)
+		if ok {
+			count++
+		}
+	}
+
+	return internal.NewIntData(count), nil
+}
+
+func (h *DefaultCommandHandler) handleDelCommand(args []internal.Data) (*internal.Data, error) {
+	count := 0
+
+	for _, arg := range args {
+		key, err := arg.GetString()
+		if err != nil {
+			return nil, fmt.Errorf("arg must be string")
+		}
+		ok := h.dict.Del(key)
 		if ok {
 			count++
 		}
